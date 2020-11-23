@@ -1,0 +1,5 @@
+db:
+    host:       192.168.0.4
+    user:       postgres
+    password:   Rnalek19!
+    port:       5432
