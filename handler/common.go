@@ -1,10 +1,12 @@
-package main
+package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -37,10 +39,6 @@ func GetOpenMCPToken() string {
 	return token
 }
 
-// func GetDecimalP2 (f []float64) string {
-
-// }
-
 func CallAPI(token string, url string, ch chan<- Resultmap) {
 	start := time.Now()
 	var bearer = "Bearer " + token
@@ -72,4 +70,31 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 
 	ch <- Resultmap{secs, url, data}
 
+}
+
+func PercentChange(child, mother float64) (result float64) {
+	// diff := float64(new - old)
+	result = (float64(child) / float64(mother)) * 100
+	return
+}
+
+func PercentUseString(child, mother string) (result string) {
+	c, _ := strconv.ParseFloat(child, 64)
+	m, _ := strconv.ParseFloat(mother, 64)
+
+	res := (c / m) * 100
+	result = fmt.Sprintf("%.1f", res)
+	return
+}
+
+func NodeHealthCheck(condType string) string {
+	result := ""
+
+	return result
+}
+
+func ClusterHealthCheck(condType string) string {
+	result := ""
+
+	return result
 }

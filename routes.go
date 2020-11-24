@@ -1,6 +1,9 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+	"portal-api-server/handler"
+)
 
 type Route struct {
 	Name        string
@@ -30,7 +33,28 @@ var routes = Routes{
 		"clusters",
 		"GET",
 		"/apis/clusters",
-		Clusters,
+		handler.Clusters,
+	},
+
+	Route{
+		"nodes",
+		"GET",
+		"/apis/nodes",
+		handler.Nodes,
+	},
+
+	Route{
+		"projects",
+		"GET",
+		"/apis/projects",
+		handler.Projects,
+	},
+
+	Route{
+		"pods",
+		"GET",
+		"/apis/pods",
+		handler.Pods,
 	},
 
 	Route{

@@ -41,12 +41,3 @@ type DashboardRes struct {
 	} `json:"projects"`
 	Regions []Region `json:"regions"`
 }
-
-type ClustersRes struct {
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	Provider string `json:"provider"`
-	Nodes    string `json:"nodes"`
-	Cpu      string `json:"cpu"`
-	Ram      string `json:"ram"`
-}

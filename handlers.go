@@ -3,11 +3,14 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"portal-api-server/cloud"
 	"portal-api-server/resource"
+
+	// "strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -37,53 +40,6 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Clusters(w http.ResponseWriter, r *http.Request) {
-	// // start := time.Now()
-	// ch := make(chan Resultmap)
-	// token := GetOpenMCPToken()
-
-	// // var allUrls []string
-
-	// clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
-	// go CallAPI(token, clusterurl, ch)
-	// clusters := <-ch
-	// // clusterData := clusters.data
-
-	// fmt.Print("clusters:", clusters)
-	// resCluster := DashboardRes{}
-	// var clusterlist = make(map[string]Region)
-	// var clusternames []string
-	// clusterHealthyCnt := 0
-	// clusterUnHealthyCnt := 0
-	// clusterUnknownCnt := 0
-	// for _, element := range clusterData["items"].([]interface{}) {
-	// 	region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-	// 	// if index > 0 {
-	// 	// 	region = "US"
-	// 	// }
-	// 	clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-	// 	statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-	// 	statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-	// 	statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
-	// 	clusterStatus := "Healthy"
-
-	// 	if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-	// 		clusterStatus = "Unhealthy"
-	// 		clusterUnHealthyCnt++
-	// 	} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-	// 		clusterStatus = "Healthy"
-	// 		clusterHealthyCnt++
-	// 	} else {
-	// 		clusterStatus = "Unknown"
-	// 		clusterUnknownCnt++
-	// 	}
-	// 	clusterlist[region] = Region{region, Attributes{clusterStatus}, append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus}})}
-	// 	clusternames = append(clusternames, clustername)
-	// }
-
-	// json.NewEncoder(w).Encode(resCluster)
-}
-
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	// start := time.Now()
 	ch := make(chan Resultmap)
@@ -103,6 +59,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	clusterUnHealthyCnt := 0
 	clusterUnknownCnt := 0
 	for _, element := range clusterData["items"].([]interface{}) {
+		// fmt.Println("element : ", element)
 		region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
 		// if index > 0 {
 		// 	region = "US"
@@ -123,7 +80,13 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 			clusterStatus = "Unknown"
 			clusterUnknownCnt++
 		}
-		clusterlist[region] = Region{region, Attributes{clusterStatus}, append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus}})}
+		fmt.Println("##############", clusterlist)
+		fmt.Println("##############", clusterlist[region])
+		clusterlist[region] =
+			Region{
+				region,
+				Attributes{clusterStatus},
+				append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus}})}
 		clusternames = append(clusternames, clustername)
 	}
 
