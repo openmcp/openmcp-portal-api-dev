@@ -8,7 +8,20 @@ import (
 	"strings"
 )
 
-func Clusters(w http.ResponseWriter, r *http.Request) {
+/*
+1. get Deployments
+http://192.168.0.152:31635/apis/apps/v1/deployments?clustername=cluster1
+name :
+ready :
+cluster
+image
+updatedtime
+
+2. Find Deployments In projects(namespace)
+
+*/
+
+func Deployments(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 

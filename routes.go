@@ -39,6 +39,13 @@ var routes = Routes{
 	Route{
 		"nodes",
 		"GET",
+		"/apis/clusters/{clusterName}/nodes",
+		handler.NodesInCluster,
+	},
+
+	Route{
+		"nodes",
+		"GET",
 		"/apis/nodes",
 		handler.Nodes,
 	},
@@ -48,6 +55,13 @@ var routes = Routes{
 		"GET",
 		"/apis/projects",
 		handler.Projects,
+	},
+
+	Route{
+		"pods",
+		"GET",
+		"/apis/clusters/{clusterName}/pods",
+		handler.PodsInCluster,
 	},
 
 	Route{
