@@ -8,9 +8,28 @@ import (
 	"strings"
 )
 
-func Clusters(w http.ResponseWriter, r *http.Request) {
+/*
+1. get Deployments
+// http://192.168.0.152:31635/apis/apps/v1/deployments?clustername=cluster1
+name : items > metatdata > namespace
+ready :
+cluster : clsuterName
+image : items > spec > containers > image
+updatedtime
+
+2. Find Deployments In projects(namespace)
+
+*/
+
+func Deployments(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+
+	// vars := mux.Vars(r)
+	// clusterName := vars["clusterName"]
+	// projectName := vars["projectName"]
+
+	// fmt.Println(clustrName, projectName)
 
 	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
