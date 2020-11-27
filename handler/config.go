@@ -1,4 +1,19 @@
 package handler
 
-var targetURL = "172.17.1.241:7070"
-var openmcpURL = "192.168.0.152:31635"
+import (
+	"github.com/jinzhu/configor"
+)
+
+var portalConfig = struct {
+	Portal struct {
+		OpenmcpURL string
+		Port       string
+	}
+}{}
+
+func InitPortalConfig() string {
+	configor.Load(&portalConfig, "portalConfig.yml")
+	return portalConfig.Portal.OpenmcpURL + ":" + portalConfig.Portal.Port
+}
+
+var openmcpURL = InitPortalConfig()
