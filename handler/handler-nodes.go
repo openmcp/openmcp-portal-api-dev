@@ -94,13 +94,25 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			memoryUse := ""
 			//  cluster CPU Usage, Memroy Usage 확인
 			for _, element := range clMetricData["nodemetrics"].([]interface{}) {
-				cpuUse = element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"].(string)
+				cpuUse := "0n"
+				cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+				if cpuUseCheck == nil {
+					cpuUse = "0n"
+				} else {
+					cpuUse = cpuUseCheck.(string)
+				}
 				cpuUse = strings.Split(cpuUse, "n")[0]
 				cpuUseInt, _ := strconv.Atoi(cpuUse)
 				cpuUseFloat := float64(cpuUseInt) / 1000 / 1000 / 1000
 				cpuUse = fmt.Sprintf("%.1f", cpuUseFloat)
 
-				memoryUse = element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"].(string)
+				memoryUse := "0Ki"
+				memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+				if memoryUseCheck == nil {
+					memoryUse = "0Ki"
+				} else {
+					memoryUse = memoryUseCheck.(string)
+				}
 				memoryUse = strings.Split(memoryUse, "Ki")[0]
 				memoryUseInt, _ := strconv.Atoi(memoryUse)
 				memoryUseFloat := float64(memoryUseInt) / 1000 / 1000
