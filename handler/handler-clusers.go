@@ -68,34 +68,38 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 			memoryCapSum += memoryCapInt
 
 			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clustername
+			fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clustername)
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
 			clMetricData := clMetricResult.data
 
+			cpuUse := "0n"
+			memoryUse := "0Ki"
 			//  cluster CPU Usage, Memroy Usage 확인
-			for _, element := range clMetricData["nodemetrics"].([]interface{}) {
-				cpuUse := "0n"
-				cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
-				if cpuUseCheck == nil {
-					cpuUse = "0n"
-				} else {
-					cpuUse = cpuUseCheck.(string)
-				}
-				cpuUse = strings.Split(cpuUse, "n")[0]
-				cpuUseInt, _ := strconv.Atoi(cpuUse)
+			if clMetricData["nodemetrics"] != nil {
+				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
 
-				memoryUse := "0Ki"
-				memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
-				if memoryUseCheck == nil {
-					memoryUse = "0Ki"
-				} else {
-					memoryUse = memoryUseCheck.(string)
-				}
-				memoryUse = strings.Split(memoryUse, "Ki")[0]
-				memoryUseInt, _ := strconv.Atoi(memoryUse)
+					cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+					if cpuUseCheck == nil {
+						cpuUse = "0n"
+					} else {
+						cpuUse = cpuUseCheck.(string)
+					}
+					cpuUse = strings.Split(cpuUse, "n")[0]
+					cpuUseInt, _ := strconv.Atoi(cpuUse)
 
-				cpuUseSum += cpuUseInt
-				memoryUseSum += memoryUseInt
+					memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+					if memoryUseCheck == nil {
+						memoryUse = "0Ki"
+					} else {
+						memoryUse = memoryUseCheck.(string)
+					}
+					memoryUse = strings.Split(memoryUse, "Ki")[0]
+					memoryUseInt, _ := strconv.Atoi(memoryUse)
+
+					cpuUseSum += cpuUseInt
+					memoryUseSum += memoryUseInt
+				}
 			}
 		}
 
