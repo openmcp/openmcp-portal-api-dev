@@ -74,14 +74,25 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 
 			//  cluster CPU Usage, Memroy Usage 확인
 			for _, element := range clMetricData["nodemetrics"].([]interface{}) {
-				cpuUse := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"].(string)
+				cpuUse := "0n"
+				cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+				if cpuUseCheck == nil {
+					cpuUse = "0n"
+				} else {
+					cpuUse = cpuUseCheck.(string)
+				}
 				cpuUse = strings.Split(cpuUse, "n")[0]
 				cpuUseInt, _ := strconv.Atoi(cpuUse)
 
-				memoryUse := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"].(string)
+				memoryUse := "0Ki"
+				memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+				if memoryUseCheck == nil {
+					memoryUse = "0Ki"
+				} else {
+					memoryUse = memoryUseCheck.(string)
+				}
 				memoryUse = strings.Split(memoryUse, "Ki")[0]
 				memoryUseInt, _ := strconv.Atoi(memoryUse)
-				// fmt.Println("memoryUseInt", memoryUse, memoryUseInt)
 
 				cpuUseSum += cpuUseInt
 				memoryUseSum += memoryUseInt
