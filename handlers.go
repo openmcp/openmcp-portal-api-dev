@@ -1,28 +1,21 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"portal-api-server/cloud"
-	"portal-api-server/resource"
+	"portal-api-server/handler"
 	"strconv"
 	"strings"
-
-	// "strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/eks"
-	"github.com/gorilla/mux"
 )
 
-var targetURL = "172.17.1.241:7070"
-var openmcpURL = "192.168.0.152:31635"
+var openmcpURL = handler.InitPortalConfig()
 
 func GetHPALists(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -353,133 +346,133 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func WorkloadsDeploymentsOverviewList(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resource.ListResource()); err != nil {
-		panic(err)
-	}
+// func WorkloadsDeploymentsOverviewList(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 	w.WriteHeader(http.StatusOK)
+// 	if err := json.NewEncoder(w).Encode(resource.ListResource()); err != nil {
+// 		panic(err)
+// 	}
 
-}
+// }
 
-func WorkloadsPodsOverviewList(w http.ResponseWriter, r *http.Request) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	vars := mux.Vars(r)
+// func WorkloadsPodsOverviewList(w http.ResponseWriter, r *http.Request) {
+// 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+// 	vars := mux.Vars(r)
 
-	var client http.Client
-	resp, err := client.Get("https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/daemonsets/list")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
+// 	var client http.Client
+// 	resp, err := client.Get("https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/daemonsets/list")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bodyBytes)
-	}
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 		w.WriteHeader(http.StatusOK)
+// 		w.Write(bodyBytes)
+// 	}
+// }
 
-func getDeploymentList(w http.ResponseWriter, r *http.Request) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	vars := mux.Vars(r)
+// func getDeploymentList(w http.ResponseWriter, r *http.Request) {
+// 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+// 	vars := mux.Vars(r)
 
-	var client http.Client
-	resp, err := client.Get("https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/deployments/list")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
+// 	var client http.Client
+// 	resp, err := client.Get("https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/deployments/list")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bodyBytes)
-	}
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 		w.WriteHeader(http.StatusOK)
+// 		w.Write(bodyBytes)
+// 	}
+// }
 
-func getDeploymentDetail(w http.ResponseWriter, r *http.Request) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	vars := mux.Vars(r)
+// func getDeploymentDetail(w http.ResponseWriter, r *http.Request) {
+// 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+// 	vars := mux.Vars(r)
 
-	var client http.Client
+// 	var client http.Client
 
-	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/detail"
-	//fmt.Print(callUrl)
+// 	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/detail"
+// 	//fmt.Print(callUrl)
 
-	resp, err := client.Get(callUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
+// 	resp, err := client.Get(callUrl)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bodyBytes)
-	}
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 		w.WriteHeader(http.StatusOK)
+// 		w.Write(bodyBytes)
+// 	}
+// }
 
-func getDeploymentYaml(w http.ResponseWriter, r *http.Request) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	vars := mux.Vars(r)
+// func getDeploymentYaml(w http.ResponseWriter, r *http.Request) {
+// 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+// 	vars := mux.Vars(r)
 
-	var client http.Client
+// 	var client http.Client
 
-	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/yaml"
-	//fmt.Print(callUrl)
+// 	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/yaml"
+// 	//fmt.Print(callUrl)
 
-	resp, err := client.Get(callUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
+// 	resp, err := client.Get(callUrl)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bodyBytes)
-	}
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 		w.WriteHeader(http.StatusOK)
+// 		w.Write(bodyBytes)
+// 	}
+// }
 
-func getDeploymentEvent(w http.ResponseWriter, r *http.Request) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	vars := mux.Vars(r)
+// func getDeploymentEvent(w http.ResponseWriter, r *http.Request) {
+// 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+// 	vars := mux.Vars(r)
 
-	var client http.Client
+// 	var client http.Client
 
-	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/events"
-	//fmt.Print(callUrl)
+// 	callUrl := "https://" + targetURL + "/seedcontainer/api/v1/clusters/" + vars["clusterName"] + "/namespaces/" + vars["namespaceName"] + "/deployments/" + vars["deploymentName"] + "/events"
+// 	//fmt.Print(callUrl)
 
-	resp, err := client.Get(callUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
+// 	resp, err := client.Get(callUrl)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(bodyBytes)
-	}
-}
+// 	if resp.StatusCode == http.StatusOK {
+// 		bodyBytes, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 		w.WriteHeader(http.StatusOK)
+// 		w.Write(bodyBytes)
+// 	}
+// }
