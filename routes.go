@@ -16,6 +16,13 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"vpa",
+		"GET",
+		"/apis/vpa",
+		GetVPALists,
+	},
+
+	Route{
 		"hpa",
 		"GET",
 		"/apis/hpa",
