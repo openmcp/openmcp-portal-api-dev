@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -71,5 +73,45 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	// ch <- fmt.Sprintf("%.2fs %s %v", secs, url, data)
 
 	ch <- Resultmap{secs, url, data}
+
+}
+
+func GetJsonBody(rbody io.Reader) map[string]interface{} {
+	bodyBytes, err := ioutil.ReadAll(rbody)
+
+	var data map[string]interface{}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.Unmarshal([]byte(bodyBytes), &data)
+	return data
+}
+
+func PostYaml(url string, yaml io.Reader) ([]byte, error) {
+	token := GetOpenMCPToken()
+
+	var bearer = "Bearer " + token
+	req, err := http.NewRequest("POST", url, yaml)
+
+	req.Header.Add("Authorization", bearer)
+	// Send req using http Client
+	var client http.Client
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
 
 }

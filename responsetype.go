@@ -41,3 +41,13 @@ type DashboardRes struct {
 	} `json:"projects"`
 	Regions []Region `json:"regions"`
 }
+
+type HPARes struct {
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Cluster     string `json:"cluster"`
+	Reference   string `json:"reference"`
+	MinRepl     string `json:"min_repl"`
+	MaxRepl     string `json:"max_repl"`
+	CurrentRepl string `json:"current_repl"`
+}

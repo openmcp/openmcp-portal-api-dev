@@ -9,34 +9,186 @@ import (
 	"net/http"
 	"portal-api-server/cloud"
 	"portal-api-server/resource"
+	"strconv"
+	"strings"
 
 	// "strconv"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/gorilla/mux"
 )
 
 var targetURL = "172.17.1.241:7070"
 var openmcpURL = "192.168.0.152:31635"
 
-func Test(w http.ResponseWriter, r *http.Request) {
+func GetHPALists(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	node, ok1 := r.URL.Query()["node"]
-	cluster, ok2 := r.URL.Query()["cluster"]
-	if !ok1 || !ok2 || len(cluster[0]) < 1 || len(node[0]) < 1 {
-		log.Println("Url Params are missing")
-		w.Write([]byte("Url Param are missing"))
-	} else {
-		result := cloud.AddNode(node[0])
-		if err := json.NewEncoder(w).Encode(result); err != nil {
-			errmsg := jsonErr{444, "result fail"}
-			json.NewEncoder(w).Encode(errmsg)
-		}
-		go cloud.GetNodeState(&result.InstanceID, node[0], cluster[0])
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
 
-		// id := "i-09ce908be9488f77c"
-		// cloud.GetNodeState(&id)
+	var allUrls []string
+
+	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	go CallAPI(token, clusterurl, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+	var clusternames []string
+	for _, element := range clusterData["items"].([]interface{}) {
+		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		clusternames = append(clusternames, clusterName)
+	}
+	// add openmcp master cluster
+	clusternames = append(clusternames, "openmcp")
+
+	for _, cluster := range clusternames {
+		hpaUrl := "http://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
+		allUrls = append(allUrls, hpaUrl)
+	}
+
+	for _, arg := range allUrls[0:] {
+		go CallAPI(token, arg, ch)
+	}
+
+	var results = make(map[string]interface{})
+	for range allUrls[0:] {
+		result := <-ch
+		results[result.url] = result.data
+	}
+
+	var HPAResList []HPARes
+
+	for key, result := range results {
+		clusterName := string(key[strings.LastIndex(key, "=")+1:])
+		items := result.(map[string]interface{})["items"].([]interface{})
+		for _, item := range items {
+			hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+
+			namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+
+			reference := item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["name"].(string)
+
+			minRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["minReplicas"].(float64)
+			minReplStr := strconv.FormatFloat(minRepl, 'f', -1, 64)
+
+			maxRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["maxReplicas"].(float64)
+			maxReplStr := strconv.FormatFloat(maxRepl, 'f', -1, 64)
+
+			currentRepl := item.(map[string]interface{})["status"].(map[string]interface{})["currentReplicas"].(float64)
+			currentRepllStr := strconv.FormatFloat(currentRepl, 'f', -1, 64)
+
+			res := HPARes{hpaName, namespace, clusterName, reference, minReplStr, maxReplStr, currentRepllStr}
+
+			HPAResList = append(HPAResList, res)
+
+		}
+	}
+	json.NewEncoder(w).Encode(HPAResList)
+}
+
+func Migration(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	clusterurl := "http://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/migrations?clustername=openmcp"
+
+	resp, err := PostYaml(clusterurl, r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		errmsg := jsonErr{503, "failed", "request fail"}
+		json.NewEncoder(w).Encode(errmsg)
+	}
+
+	var data map[string]interface{}
+	json.Unmarshal([]byte(resp), &data)
+
+	if data["kind"].(string) == "Status" {
+		msg := jsonErr{501, "failed", data["message"].(string)}
+		json.NewEncoder(w).Encode(msg)
+	} else {
+		msg := jsonErr{200, "success", "Migration Created"}
+		json.NewEncoder(w).Encode(msg)
+	}
+
+}
+
+func AddEKSnode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	akid := "AKIAJGFO6OXHRN2H6DSA"
+	secretkey := "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"
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("ap-northeast-2"),
+		Credentials: credentials.NewStaticCredentials(akid, secretkey, ""),
+	})
+
+	if err != nil {
+		errmsg := jsonErr{503, "failed", "result fail"}
+		json.NewEncoder(w).Encode(errmsg)
+	}
+
+	svc := eks.New(sess)
+
+	result, err := svc.ListNodegroups(&eks.ListNodegroupsInput{
+		ClusterName: aws.String("testcluster"),
+	})
+
+	nodegroupname := result.Nodegroups[0]
+
+	result2, err := svc.DescribeNodegroup(&eks.DescribeNodegroupInput{
+		ClusterName:   aws.String("testcluster"),
+		NodegroupName: aws.String(*nodegroupname),
+	})
+
+	beforecnt := result2.Nodegroup.ScalingConfig.DesiredSize
+	var nodecnt int64
+	nodecnt = -1
+	desirecnt := *beforecnt + nodecnt
+
+	// // la := make(map[string]*string)
+	// // namelabel := "newlabel01"
+	// // la["newlabel01"] = &namelabel
+
+	// labelinput := eks.UpdateLabelsPayload{la["newlabel01"]}
+
+	addResult, err := svc.UpdateNodegroupConfig(&eks.UpdateNodegroupConfigInput{
+		ClusterName:   aws.String("testcluster"),
+		NodegroupName: aws.String(*nodegroupname),
+		// Labels:        &eks.UpdateLabelsPayload{AddOrUpdateLabels: la},
+		ScalingConfig: &eks.NodegroupScalingConfig{DesiredSize: &desirecnt},
+	})
+
+	if err != nil {
+		errmsg := jsonErr{503, "failed", "result fail"}
+		json.NewEncoder(w).Encode(errmsg)
+	}
+
+	fmt.Println(addResult)
+
+}
+
+func Addec2node(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+	node := data["node"].(string)
+	cluster := data["cluster"].(string)
+	aKey := data["a_key"].(string)
+	sKey := data["s_key"].(string)
+	result := cloud.AddNode(node, aKey, sKey)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		errmsg := jsonErr{503, "failed", "result fail"}
+		json.NewEncoder(w).Encode(errmsg)
+	}
+	if result.Result != "Could not create instance" {
+		go cloud.GetNodeState(&result.InstanceID, node, cluster, aKey, sKey)
 	}
 }
 
@@ -199,148 +351,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Unknown", clusterUnknownCnt})
 	json.NewEncoder(w).Encode(resCluster)
 
-	// nodeurl := "http://" + openmcpURL + "/api/v1/nodes?clustername=cluster1"
-	// allUrls = append(allUrls, nodeurl)
-	// podurl := "http://" + openmcpURL + "/api/v1/pods?clustername=cluster1"
-	// allUrls = append(allUrls, podurl)
-	// projecturl := "http://" + openmcpURL + "/api/v1/namespaces?clustername=cluster1"
-	// allUrls = append(allUrls, projecturl)
-
-	// for _, arg := range allUrls[0:] {
-	// 	go CallAPI(token, arg, ch)
-
-	// }
-
-	// for _, arg := range allUrls[0:] {
-	// 	// fmt.Println(<-ch)
-	// 	results[arg] = <-ch
-	// }
-
-	// fmt.Println("%.2fs elapsed\n", time.Since(start).Seconds())
-	// fmt.Println(results["http://192.168.0.152:31635/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"])
-	// fmt.Println("%.2fs elapsed\n", time.Since(start).Seconds())
-	// ******************************
-	// if token != "" {
-
-	// 	clusterData := CallAPI(token, clusterurl)
-	// 	// nodeData := CallAPI(token, nodeurl)
-	// 	// podData := CallAPI(token, podurl)
-	// 	// projectData := CallAPI(token, projecturl)
-
-	// 	fmt.Println("ClustersCnt:", len(clusterData["items"].([]interface{})))
-	// 	// var children []ChildNode
-	// 	// var childnode ChildNode
-	// 	type zoneGroup struct {
-	// 		zone       string
-	// 		childNodes []ChildNode
-	// 	}
-
-	// 	resCluster := DashboardRes{}
-	// 	var clusterlist = make(map[string]Region)
-
-	// 	for _, element := range clusterData["items"].([]interface{}) {
-	// 		region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-	// 		// if index > 0 {
-	// 		// 	region = "US"
-	// 		// }
-	// 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-	// 		statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-	// 		statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-	// 		statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
-	// 		clusterStatus := "healthy"
-
-	// 		if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-	// 			clusterStatus = "unhealthy"
-	// 		} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-	// 			clusterStatus = "healthy"
-	// 		} else {
-	// 			clusterStatus = "unknown"
-	// 		}
-	// 		clusterlist[region] = Region{region, Attributes{clusterStatus}, append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus}})}
-
-	// 		// fmt.Println("Index :", index, " Element :", reflect.TypeOf(element))
-
-	// 		// clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-	// 		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-	// 		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-	// 		// statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
-	// 		// region := element.(map[string]interface{})["status"].(map[string]interface{})["region"].(string)
-	// 		// zones := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-	// 		// fmt.Println(region, "/", zones)
-	// 		// if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-	// 		// 	childnode = ChildNode{clustername, Attributes{"unhealthy"}}
-	// 		// } else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-	// 		// 	childnode = ChildNode{clustername, Attributes{"healthy"}}
-	// 		// } else {
-	// 		// 	childnode = ChildNode{clustername, Attributes{"unknown"}}
-	// 		// }
-	// 		// children = append(children, childnode)
-
-	// 		// fmt.Println("Index :", index, "clustername : ", element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
-	// 		// fmt.Println("Index :", index, "status_reason : ", element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"])
-	// 		// fmt.Println("Index :", index, "status_type : ", element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"])
-	// 		// fmt.Println("Index :", index, "status_tf : ", element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"])
-
-	// 	}
-	// 	// var outputs []zoneGroup
-
-	// 	for _, outp := range clusterlist {
-	// 		resCluster.Regions = append(resCluster.Regions, outp)
-	// 	}
-
-	// 	json.NewEncoder(w).Encode(resCluster)
-
-	// 	// resCluster := DashboardRes{}
-	// 	// resCluster.Clusters.ClustersCnt = 3
-	// 	// resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"healthy", 2})
-	// 	// resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"unhealthy", 1})
-	// 	// resCluster.Nodes.NodesCnt = 10
-	// 	// resCluster.Nodes.NodesStatus = append(resCluster.Nodes.NodesStatus, NameVal{"healthy", 2})
-	// 	// resCluster.Nodes.NodesStatus = append(resCluster.Nodes.NodesStatus, NameVal{"unhealthy", 2})
-	// 	// resCluster.Nodes.NodesStatus = append(resCluster.Nodes.NodesStatus, NameVal{"unknown", 2})
-	// 	// resCluster.Pods.PodsCnt = 30
-	// 	// resCluster.Pods.PodsStatus = append(resCluster.Pods.PodsStatus, NameVal{"running", 10})
-	// 	// resCluster.Pods.PodsStatus = append(resCluster.Pods.PodsStatus, NameVal{"pending", 10})
-	// 	// resCluster.Pods.PodsStatus = append(resCluster.Pods.PodsStatus, NameVal{"unknown", 3})
-	// 	// resCluster.Pods.PodsStatus = append(resCluster.Pods.PodsStatus, NameVal{"failed", 7})
-	// 	// resCluster.Projects.ProjectsCnt = 1
-	// 	// resCluster.Projects.ProjectsStatus = append(resCluster.Projects.ProjectsStatus, NameVal{"healthy", 13})
-	// 	// resCluster.Projects.ProjectsStatus = append(resCluster.Projects.ProjectsStatus, NameVal{"unhealthy", 17})
-	// 	// childnode := ChildNode{"C1", Attributes{"unhealthy"}}
-	// 	// var children []ChildNode
-	// 	// children = append(children, childnode)
-	// 	// childnode = ChildNode{"C2", Attributes{"unhealthy"}}
-	// 	// children = append(children, childnode)
-	// 	// childnode = ChildNode{"C3", Attributes{"unhealthy"}}
-	// 	// children = append(children, childnode)
-	// 	// reg := Region{"aaaa", Attributes{"unhealthy"}, children}
-	// 	// resCluster.Regions = append(resCluster.Regions, reg)
-	// 	// children = nil
-	// 	// children = append(children, childnode)
-	// 	// childnode = ChildNode{"C4", Attributes{"healthy"}}
-	// 	// children = append(children, childnode)
-	// 	// childnode = ChildNode{"C5", Attributes{"healthy"}}
-	// 	// children = append(children, childnode)
-	// 	// reg = Region{"bbbb", Attributes{"healthy"}, children}
-	// 	// resCluster.Regions = append(resCluster.Regions, reg)
-
-	// 	// w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	// 	// w.WriteHeader(http.StatusOK)
-	// 	// json.NewEncoder(w).Encode(resCluster)
-	// 	// fmt.Println(resCluster)
-
-	// 	// fmt.Println(data)
-
-	// } else {
-	// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	// 	w.WriteHeader(http.StatusOK)
-	// 	w.Write([]byte("Cannot Auth OpenMCP API Server"))
-	// }
-	// ******************************
-
-	// w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	// w.WriteHeader(http.StatusOK)
-	// w.Write([]byte("clusters"))
 }
 
 func WorkloadsDeploymentsOverviewList(w http.ResponseWriter, r *http.Request) {

@@ -16,10 +16,31 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
-		"test",
+		"hpa",
 		"GET",
-		"/test",
-		Test,
+		"/apis/hpa",
+		GetHPALists,
+	},
+
+	Route{
+		"addeksnode",
+		"POST",
+		"/apis/addeksnode",
+		AddEKSnode,
+	},
+
+	Route{
+		"migration",
+		"POST",
+		"/apis/migration",
+		Migration,
+	},
+
+	Route{
+		"addec2node",
+		"POST",
+		"/apis/addec2node",
+		Addec2node,
 	},
 
 	Route{

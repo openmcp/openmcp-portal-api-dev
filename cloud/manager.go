@@ -14,12 +14,12 @@ import (
 	"time"
 )
 
-func AddNode(nodenm string) AddNodeResult {
+func AddNode(nodenm string, aKey string, sKey string) AddNodeResult {
 
 	var r = AddNodeResult{}
 
-	akid := "AKIAIELVTPYOW23AO3KA"
-	secretkey := "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"
+	akid := aKey
+	secretkey := sKey
 
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("ap-northeast-2"),
@@ -70,10 +70,10 @@ func AddNode(nodenm string) AddNodeResult {
 	return r
 }
 
-func GetNodeState(instanceId *string, nodenm string, cluster string) {
+func GetNodeState(instanceId *string, nodenm string, cluster string, aKey string, sKey string) {
 
-	akid := "AKIAIELVTPYOW23AO3KA"
-	secretkey := "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"
+	akid := aKey
+	secretkey := sKey
 
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("ap-northeast-2"),
