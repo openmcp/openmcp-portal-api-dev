@@ -51,3 +51,11 @@ type HPARes struct {
 	MaxRepl     string `json:"max_repl"`
 	CurrentRepl string `json:"current_repl"`
 }
+
+type VPARes struct {
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	Cluster    string `json:"cluster"`
+	Reference  string `json:"reference"`
+	UpdateMode string `json:"update_mode"`
+}

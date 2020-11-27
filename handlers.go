@@ -17,10 +17,94 @@ import (
 
 var openmcpURL = handler.InitPortalConfig()
 
+func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	url := "http://" + openmcpURL + "/joinable"
+	go CallAPI(token, url, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+
+	type joinable struct {
+		name     string `json:"name"`
+		endpoint string `json:"endpoint"`
+		platform string `json:"platform"`
+		region   string `json:"region"`
+		zone     string `json:"zone"`
+	}
+
+	var joinableLists []joinable
+
+	for _, element := range clusterData["items"].([]interface{}) {
+		name := element.(map[string]interface{})["name"].(string)
+		endpoint := element.(map[string]interface{})["name"].(string)
+		platform := element.(map[string]interface{})["name"].(string)
+		region := element.(map[string]interface{})["name"].(string)
+		zone := element.(map[string]interface{})["name"].(string)
+		res := joinable{name, endpoint, platform, region, zone}
+		joinableLists = append(joinableLists, res)
+	}
+	json.NewEncoder(w).Encode(joinableLists)
+}
+
 func GetVPALists(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	var allUrls []string
+
+	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	go CallAPI(token, clusterurl, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+	var clusternames []string
+	for _, element := range clusterData["items"].([]interface{}) {
+		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		clusternames = append(clusternames, clusterName)
+	}
+
+	for _, cluster := range clusternames {
+		vpaURL := "http://" + openmcpURL + "/apis/autoscaling.k8s.io/v1beta2/verticalpodautoscalers?clustername=" + cluster
+		allUrls = append(allUrls, vpaURL)
+	}
+
+	for _, arg := range allUrls[0:] {
+		go CallAPI(token, arg, ch)
+	}
+
+	var results = make(map[string]interface{})
+	for range allUrls[0:] {
+		result := <-ch
+		results[result.url] = result.data
+	}
+	var VPAResList []VPARes
+
+	for key, result := range results {
+		clusterName := string(key[strings.LastIndex(key, "=")+1:])
+		items := result.(map[string]interface{})["items"].([]interface{})
+		for _, item := range items {
+			hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+
+			namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+
+			reference := item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["name"].(string)
+
+			updateMode := item.(map[string]interface{})["spec"].(map[string]interface{})["updatePolicy"].(map[string]interface{})["updateMode"].(string)
+
+			res := VPARes{hpaName, namespace, clusterName, reference, updateMode}
+
+			VPAResList = append(VPAResList, res)
+
+		}
+	}
+	json.NewEncoder(w).Encode(VPAResList)
 }
 
 func GetHPALists(w http.ResponseWriter, r *http.Request) {
@@ -45,8 +129,8 @@ func GetHPALists(w http.ResponseWriter, r *http.Request) {
 	clusternames = append(clusternames, "openmcp")
 
 	for _, cluster := range clusternames {
-		hpaUrl := "http://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
-		allUrls = append(allUrls, hpaUrl)
+		hpaURL := "http://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
+		allUrls = append(allUrls, hpaURL)
 	}
 
 	for _, arg := range allUrls[0:] {
