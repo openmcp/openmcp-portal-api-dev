@@ -86,37 +86,40 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			containerRuntimeVersion := element.(map[string]interface{})["status"].(map[string]interface{})["nodeInfo"].(map[string]interface{})["containerRuntimeVersion"].(string)
 
 			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+			// clMetricURL := "http://192.168.0.152:31635/metrics/nodes/clusterd-worker1.dev.gmd.life?clustername=cluster2"
+
+			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
 			clMetricData := clMetricResult.data
 
-			cpuUse := ""
-			memoryUse := ""
+			cpuUse := "0n"
+			memoryUse := "0Ki"
 			//  cluster CPU Usage, Memroy Usage 확인
-			for _, element := range clMetricData["nodemetrics"].([]interface{}) {
-				cpuUse := "0n"
-				cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
-				if cpuUseCheck == nil {
-					cpuUse = "0n"
-				} else {
-					cpuUse = cpuUseCheck.(string)
-				}
-				cpuUse = strings.Split(cpuUse, "n")[0]
-				cpuUseInt, _ := strconv.Atoi(cpuUse)
-				cpuUseFloat := float64(cpuUseInt) / 1000 / 1000 / 1000
-				cpuUse = fmt.Sprintf("%.1f", cpuUseFloat)
+			if clMetricData["nodemetrics"] != nil {
+				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
+					cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+					if cpuUseCheck == nil {
+						cpuUse = "0n"
+					} else {
+						cpuUse = cpuUseCheck.(string)
+					}
+					cpuUse = strings.Split(cpuUse, "n")[0]
+					cpuUseInt, _ := strconv.Atoi(cpuUse)
+					cpuUseFloat := float64(cpuUseInt) / 1000 / 1000 / 1000
+					cpuUse = fmt.Sprintf("%.1f", cpuUseFloat)
 
-				memoryUse := "0Ki"
-				memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
-				if memoryUseCheck == nil {
-					memoryUse = "0Ki"
-				} else {
-					memoryUse = memoryUseCheck.(string)
+					memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+					if memoryUseCheck == nil {
+						memoryUse = "0Ki"
+					} else {
+						memoryUse = memoryUseCheck.(string)
+					}
+					memoryUse = strings.Split(memoryUse, "Ki")[0]
+					memoryUseInt, _ := strconv.Atoi(memoryUse)
+					memoryUseFloat := float64(memoryUseInt) / 1000 / 1000
+					memoryUse = fmt.Sprintf("%.1f", memoryUseFloat)
 				}
-				memoryUse = strings.Split(memoryUse, "Ki")[0]
-				memoryUseInt, _ := strconv.Atoi(memoryUse)
-				memoryUseFloat := float64(memoryUseInt) / 1000 / 1000
-				memoryUse = fmt.Sprintf("%.1f", memoryUseFloat)
 			}
 
 			node.Name = nodeName
@@ -239,37 +242,41 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 		containerRuntimeVersion := element.(map[string]interface{})["status"].(map[string]interface{})["nodeInfo"].(map[string]interface{})["containerRuntimeVersion"].(string)
 
 		clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+
+		fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
+
 		go CallAPI(token, clMetricURL, ch)
 		clMetricResult := <-ch
 		clMetricData := clMetricResult.data
 
-		cpuUse := ""
-		memoryUse := ""
+		cpuUse := "0n"
+		memoryUse := "0Ki"
 		//  cluster CPU Usage, Memroy Usage 확인
-		for _, element := range clMetricData["nodemetrics"].([]interface{}) {
-			cpuUse := "0n"
-			cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
-			if cpuUseCheck == nil {
-				cpuUse = "0n"
-			} else {
-				cpuUse = cpuUseCheck.(string)
-			}
-			cpuUse = strings.Split(cpuUse, "n")[0]
-			cpuUseInt, _ := strconv.Atoi(cpuUse)
-			cpuUseFloat := float64(cpuUseInt) / 1000 / 1000 / 1000
-			cpuUse = fmt.Sprintf("%.1f", cpuUseFloat)
+		if clMetricData["nodemetrics"] != nil {
+			for _, element := range clMetricData["nodemetrics"].([]interface{}) {
 
-			memoryUse := "0Ki"
-			memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
-			if memoryUseCheck == nil {
-				memoryUse = "0Ki"
-			} else {
-				memoryUse = memoryUseCheck.(string)
+				cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+				if cpuUseCheck == nil {
+					cpuUse = "0n"
+				} else {
+					cpuUse = cpuUseCheck.(string)
+				}
+				cpuUse = strings.Split(cpuUse, "n")[0]
+				cpuUseInt, _ := strconv.Atoi(cpuUse)
+				cpuUseFloat := float64(cpuUseInt) / 1000 / 1000 / 1000
+				cpuUse = fmt.Sprintf("%.1f", cpuUseFloat)
+
+				memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+				if memoryUseCheck == nil {
+					memoryUse = "0Ki"
+				} else {
+					memoryUse = memoryUseCheck.(string)
+				}
+				memoryUse = strings.Split(memoryUse, "Ki")[0]
+				memoryUseInt, _ := strconv.Atoi(memoryUse)
+				memoryUseFloat := float64(memoryUseInt) / 1000 / 1000
+				memoryUse = fmt.Sprintf("%.1f", memoryUseFloat)
 			}
-			memoryUse = strings.Split(memoryUse, "Ki")[0]
-			memoryUseInt, _ := strconv.Atoi(memoryUse)
-			memoryUseFloat := float64(memoryUseInt) / 1000 / 1000
-			memoryUse = fmt.Sprintf("%.1f", memoryUseFloat)
 		}
 
 		node.Name = nodeName
