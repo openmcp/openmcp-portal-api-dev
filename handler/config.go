@@ -8,6 +8,7 @@ var portalConfig = struct {
 	Portal struct {
 		OpenmcpURL string
 		Port       string
+		Kubeconfig string
 	}
 }{}
 
@@ -17,3 +18,4 @@ func InitPortalConfig() string {
 }
 
 var openmcpURL = InitPortalConfig()
+var kubeConfigFile = portalConfig.Portal.Kubeconfig

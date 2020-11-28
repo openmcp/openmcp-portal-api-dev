@@ -30,25 +30,28 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 	clusterData := clusters.data
 
 	type joinable struct {
-		name     string `json:"name"`
-		endpoint string `json:"endpoint"`
-		platform string `json:"platform"`
-		region   string `json:"region"`
-		zone     string `json:"zone"`
+		Name     string `json:"name"`
+		Endpoint string `json:"endpoint"`
+		Platform string `json:"platform"`
+		Region   string `json:"region"`
+		Zone     string `json:"zone"`
 	}
 
 	var joinableLists []joinable
-
-	for _, element := range clusterData["items"].([]interface{}) {
-		name := element.(map[string]interface{})["name"].(string)
-		endpoint := element.(map[string]interface{})["name"].(string)
-		platform := element.(map[string]interface{})["name"].(string)
-		region := element.(map[string]interface{})["name"].(string)
-		zone := element.(map[string]interface{})["name"].(string)
-		res := joinable{name, endpoint, platform, region, zone}
-		joinableLists = append(joinableLists, res)
+	if clusterData["items"] != nil {
+		for _, element := range clusterData["items"].([]interface{}) {
+			name := element.(map[string]interface{})["name"].(string)
+			endpoint := element.(map[string]interface{})["endpoint"].(string)
+			platform := element.(map[string]interface{})["platform"].(string)
+			region := element.(map[string]interface{})["region"].(string)
+			zone := element.(map[string]interface{})["zone"].(string)
+			res := joinable{name, endpoint, platform, region, zone}
+			joinableLists = append(joinableLists, res)
+		}
+		json.NewEncoder(w).Encode(joinableLists)
+	} else {
+		json.NewEncoder(w).Encode(joinableLists)
 	}
-	json.NewEncoder(w).Encode(joinableLists)
 }
 
 func GetVPALists(w http.ResponseWriter, r *http.Request) {

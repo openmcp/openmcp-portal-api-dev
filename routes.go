@@ -15,7 +15,6 @@ type Route struct {
 type Routes []Route
 
 var routes = Routes{
-
 	Route{
 		"joinableclusters",
 		"GET",
@@ -69,6 +68,13 @@ var routes = Routes{
 		"GET",
 		"/apis/clusters",
 		handler.Clusters,
+	},
+
+	Route{
+		"cluster-overview",
+		"GET",
+		"/apis/clusters/overview",
+		handler.ClusterOverview,
 	},
 
 	Route{
