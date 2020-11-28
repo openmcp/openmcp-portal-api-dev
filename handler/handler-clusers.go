@@ -421,10 +421,14 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		nodeCPURank := reverseRank(nodeResCPU, 5)
 		nodeMemRank := reverseRank(nodeResMem, 5)
 		fmt.Println(nodeCPURank, nodeMemRank)
-		nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
-		nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
-		nodeResFSSumStr := fmt.Sprintf("%.1f", float64(nodeResFSSum)/1000/1000)
-		nodeResFSCapaSumStr := fmt.Sprintf("%.1f", float64(nodeResFSCapaSum)/1000/1000)
+		// nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
+		nodeResCPUSumStr := nodeResCPUSum / 1000 / 1000 / 1000
+		// nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
+		nodeResMemSumStr := nodeResMemSum / 1000
+		// nodeResFSSumStr := fmt.Sprintf("%.1f", float64(nodeResFSSum)/1000/1000)
+		nodeResFSSumStr := float64(nodeResFSSum) / 1000 / 1000
+		// nodeResFSCapaSumStr := fmt.Sprintf("%.1f", float64(nodeResFSCapaSum)/1000/1000)
+		nodeResFSCapaSumStr := float64(nodeResFSCapaSum) / 1000 / 1000
 		fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
 
 		config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
@@ -490,12 +494,14 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		var cpuStaus []NameVal
 		var memStaus []NameVal
 		var fsStaus []NameVal
-		cpuStaus = append(cpuStaus, NameVal{"Used", nodeResCPUSumStr})
-		cpuStaus = append(cpuStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
-		memStaus = append(memStaus, NameVal{"Used", nodeResMemSumStr})
-		memStaus = append(memStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
-		fsStaus = append(fsStaus, NameVal{"Used", nodeResFSSumStr})
-		fsStaus = append(fsStaus, NameVal{"Total", nodeResFSCapaSumStr})
+		cpuStaus = append(cpuStaus, NameVal{"Used", math.Ceil(nodeResCPUSumStr*100) / 100})
+		// cpuStaus = append(cpuStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
+		cpuStaus = append(cpuStaus, NameVal{"Total", math.Ceil(float64(clusterCPUCapSum)/1000/1000/1000*100) / 100})
+		memStaus = append(memStaus, NameVal{"Used", math.Ceil(nodeResMemSumStr*100) / 100})
+		// memStaus = append(memStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
+		memStaus = append(memStaus, NameVal{"Total", math.Ceil(float64(clusterMemoryCapSum)/1000/1000*100) / 100})
+		fsStaus = append(fsStaus, NameVal{"Used", math.Ceil(nodeResFSSumStr*100) / 100})
+		fsStaus = append(fsStaus, NameVal{"Total", math.Ceil(nodeResFSCapaSumStr*100) / 100})
 		cpuUnit := Unit{"core", cpuStaus}
 		memUnit := Unit{"Gi", memStaus}
 		fsUnit := Unit{"Gi", fsStaus}
