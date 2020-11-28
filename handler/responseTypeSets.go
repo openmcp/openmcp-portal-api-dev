@@ -7,11 +7,14 @@ type ClustersRes struct {
 type ClusterInfo struct {
 	Name     string `json:"name"`
 	Region   string `json:"region"`
+	Zones    string `json:"zone"`
 	Status   string `json:"status"`
 	Provider string `json:"provider"`
 	Nodes    int    `json:"nodes"`
 	Cpu      string `json:"cpu"`
 	Ram      string `json:"ram"`
+	Disk     string `json:"disk"`
+	Network  string `json:"network"`
 }
 
 type NodeRes struct {
@@ -67,10 +70,32 @@ type DeploymentInfo struct {
 	Status      string `json:"status"`
 	Cluster     string `json:"cluster"`
 	Project     string `json:"project"`
-	PodIP       string `json:"pod_ip"`
-	Node        string `json:"node"`
-	NodeIP      string `json:"node_ip"`
-	Cpu         string `json:"cpu"`
-	Ram         string `json:"memory"`
+	Image       string `json:"image"`
+	CreatedTime string `json:"created_time"`
+}
+
+type ServicesRes struct {
+	Services []ServicesInfo `json:"services"`
+}
+
+type ServicesInfo struct {
+	Name       string `json:"name"`
+	Cluster    string `json:"cluster"`
+	Project    string `json:"project"`
+	Type       string `json:"type"`
+	Selector   string `json:"selector"`
+	Port       string `json:"port"`
+	CreateTime string `json:"created_time"`
+}
+
+type IngerssRes struct {
+	Ingress []IngerssInfo `json:"ingress"`
+}
+
+type IngerssInfo struct {
+	Name        string `json:"name"`
+	Cluster     string `json:"cluster"`
+	Project     string `json:"project"`
+	Address     string `json:"address"`
 	CreatedTime string `json:"created_time"`
 }

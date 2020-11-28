@@ -22,13 +22,17 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 	resNode := NodeRes{}
 	podsCount := make(map[string]int)
 
-	// clusterNames := []string
+	clusterNames := []string{}
+	clusterNames = append(clusterNames, "openmcp")
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		node := NodeInfo{}
 		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		// clusterNames = append(clusterNames, clusterName)
+		clusterNames = append(clusterNames, clusterName)
 
+	}
+
+	for _, clusterName := range clusterNames {
+		node := NodeInfo{}
 		// get node names, cpu(capacity)
 		nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 		go CallAPI(token, nodeURL, ch)

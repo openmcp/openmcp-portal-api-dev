@@ -93,11 +93,31 @@ var routes = Routes{
 	},
 
 	Route{
-		"projects",
+		"deployments",
 		"GET",
-		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments",
+		"/apis/deployments",
 		handler.Deployments,
 	},
+
+	Route{
+		"services",
+		"GET",
+		"/apis/services",
+		handler.Services,
+	},
+
+	Route{
+		"ingress",
+		"GET",
+		"/apis/ingress",
+		handler.Ingress,
+	},
+	// Route{
+	// 	"projects",
+	// 	"GET",
+	// 	"/apis/clsuters/{clusterName}/projects/{projectName}/deployments",
+	// 	handler.Deployments,
+	// },
 
 	Route{
 		"pods",

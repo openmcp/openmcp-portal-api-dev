@@ -17,6 +17,7 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 
 	resProject := ProjectRes{}
 	clusterNames := []string{}
+	clusterNames = append(clusterNames, "openmcp")
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
