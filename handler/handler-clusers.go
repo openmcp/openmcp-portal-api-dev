@@ -74,8 +74,6 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		cpuCapSum := 0
 		memoryCapSum := 0
 		fsCapSum := 0
-		clusterCpuCapSum := 0
-		clusterMemoryCapSum := 0
 		cpuUseSum := 0
 		memoryUseSum := 0
 		fsUseSum := 0
@@ -117,8 +115,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
 
-			clusterCpuCapSum += cpuCapInt
-			clusterMemoryCapSum += memoryCapInt
+			cpuCapSum += cpuCapInt
+			memoryCapSum += memoryCapInt
 
 			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
 			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name)
@@ -204,8 +202,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		cpuUseSumS := fmt.Sprintf("%.1f", cpuUseSumF)
 		memoryUseSumF := float64(memoryUseSum) / 1000 / 1000
 		memoryUseSumS := fmt.Sprintf("%.1f", memoryUseSumF)
-		clusterMemoryCapSumF := float64(clusterMemoryCapSum) / 1000 / 1000
-		clusterMemoryCapSumS := fmt.Sprintf("%.1f", clusterMemoryCapSumF)
+		memoryCapSumF := float64(memoryCapSum) / 1000 / 1000
+		memoryCapSumS := fmt.Sprintf("%.1f", memoryCapSumF)
 
 		fsUseSumF := float64(fsUseSum) / 1000 / 1000
 		fsUseSumS := fmt.Sprintf("%.1f", fsUseSumF)
