@@ -74,3 +74,59 @@ type DeploymentInfo struct {
 	Ram         string `json:"memory"`
 	CreatedTime string `json:"created_time"`
 }
+
+type ClusterResourceUsage struct {
+	Cpu     Unit `json:"cpu"`
+	Memory  Unit `json:"memory"`
+	Storage Unit `json:"storage"`
+}
+
+type Unit struct {
+	Unit    string    `json:"unit"`
+	NameVal []NameVal `json:"status"`
+}
+
+type NameVal struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type ClusterOverView struct {
+	Info             BasicInfo            `json:"basic_info"`
+	PusageTop5       ProjectUsageTop5     `json:"project_usage_top5"`
+	NusageTop5       NodeUsageTop5        `json:"node_usage_top5"`
+	CUsage           ClusterResourceUsage `json:"cluster_resource_usage"`
+	KubernetesStatus []NameStatus         `json:"kubernetes_status"`
+	Events           []Event              `json:"events"`
+}
+
+type ProjectUsageTop5 struct {
+	CPU    PairList `json:"cpu"`
+	Memory PairList `json:"memory"`
+}
+
+type NodeUsageTop5 struct {
+	CPU    PairList `json:"cpu"`
+	Memory PairList `json:"memory"`
+}
+
+type NameStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+type BasicInfo struct {
+	Name              string `json:"name"`
+	Provider          string `json:"provider"`
+	KubernetesVersion string `json:"kubernetes_version"`
+	Status            string `json:"status"`
+}
+
+type Event struct {
+	Project string `json:"project"`
+	Typenm  string `json:"type"`
+	Reason  string `json:"reason"`
+	Object  string `json:"object"`
+	Message string `json:"message"`
+	Time    string `json:"time"`
+}

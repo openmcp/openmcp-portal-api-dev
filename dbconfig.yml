@@ -3,3 +3,8 @@ db:
     user:       postgres
     password:   Rnalek19!
     port:       5432
+influx:
+    ip:         192.168.0.203
+    port:       8086
+    username:   root
+    password:   root
