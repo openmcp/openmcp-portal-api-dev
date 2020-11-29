@@ -60,11 +60,11 @@ func YamlApply(w http.ResponseWriter, r *http.Request) {
 		}
 		urlString = strings.ToLower(urlString)
 		pBody := bytes.NewBuffer(rawObj.Raw)
-		fmt.Println("urlString:    ", urlString)
+		// fmt.Println("urlString:    ", urlString)
 		// fmt.Println("pBody:     ", pBody)
 		resp, err := PostYaml(urlString, pBody)
 		var msg jsonErr
-		fmt.Println("resp:     ", resp)
+		// fmt.Println("resp:     ", resp)
 
 		if err != nil {
 			msg = jsonErr{503, "failed", "request fail | " + gvk.Kind + " | " + namespace + " | " + unstructuredObj.GetName()}
@@ -84,7 +84,7 @@ func YamlApply(w http.ResponseWriter, r *http.Request) {
 		}
 
 		jsonErrs = append(jsonErrs, msg)
-		fmt.Println(jsonErrs)
+		// fmt.Println(jsonErrs)
 	}
 	json.NewEncoder(w).Encode(jsonErrs)
 }

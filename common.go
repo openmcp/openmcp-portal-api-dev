@@ -90,7 +90,7 @@ func GetJsonBody(rbody io.Reader) map[string]interface{} {
 
 func PostYaml(url string, yaml io.Reader) ([]byte, error) {
 	token := GetOpenMCPToken()
-	fmt.Println("yaml   :", yaml)
+	// fmt.Println("yaml   :", yaml)
 	var bearer = "Bearer " + token
 	req, err := http.NewRequest("POST", url, yaml)
 
