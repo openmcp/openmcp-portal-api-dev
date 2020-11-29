@@ -486,7 +486,10 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 				reason := element.(map[string]interface{})["reason"].(string)
 				object := element.(map[string]interface{})["involvedObject"].(map[string]interface{})["kind"].(string)
 				message := element.(map[string]interface{})["message"].(string)
-				time := element.(map[string]interface{})["lastTimestamp"].(string)
+				time := "-"
+				if element.(map[string]interface{})["lastTimestamp"] != nil {
+					time = element.(map[string]interface{})["lastTimestamp"].(string)
+				}
 				events = append(events, Event{project, typeNm, reason, object, message, time})
 			}
 		}

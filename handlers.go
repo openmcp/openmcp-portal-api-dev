@@ -181,7 +181,6 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	clusterurl := "http://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/migrations?clustername=openmcp"
-
 	resp, err := PostYaml(clusterurl, r.Body)
 	defer r.Body.Close()
 	if err != nil {

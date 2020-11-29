@@ -16,6 +16,12 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"yamlapply",
+		"POST",
+		"/apis/yamlapply",
+		YamlApply,
+	},
+	Route{
 		"joinableclusters",
 		"GET",
 		"/apis/joinableclusters",
