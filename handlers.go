@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"portal-api-server/cloud"
 	"portal-api-server/handler"
@@ -253,7 +252,7 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(errmsg)
 	}
 
-	fmt.Println(addResult)
+	// fmt.Println(addResult)
 
 }
 
@@ -317,8 +316,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 			clusterStatus = "Unknown"
 			clusterUnknownCnt++
 		}
-		fmt.Println("##############", clusterlist)
-		fmt.Println("##############", clusterlist[region])
+		// fmt.Println("##############", clusterlist)
+		// fmt.Println("##############", clusterlist[region])
 		clusterlist[region] =
 			Region{
 				region,
@@ -402,13 +401,12 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 					conType := elem.(map[string]interface{})["type"].(string)
 					tf := elem.(map[string]interface{})["status"].(string)
 					healthCheck[conType] = tf
-
 				}
 
-				if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+				if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False")) && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 					healthyNodeCnt++
 				} else {
-					if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+					if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 						unknownNodeCnt++
 					} else {
 						unhealthyNodeCnt++

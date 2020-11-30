@@ -92,11 +92,11 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 				healthCheck[conType] = tf
 			}
 
-			if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 				// healthyNodeCnt++
 				status = "Healthy"
 			} else {
-				if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 					status = "Unknown"
 				} else {
 					status = "Unhealthy"
@@ -219,7 +219,7 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Disk = PercentUseString(fsUseSumS, fsCapSumS) + "%"
 		resCluster.Clusters[i].Network = networkSumS + " bytes"
 	}
-	fmt.Println(resCluster.Clusters)
+	// fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
@@ -316,10 +316,10 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 			}
 
-			if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 				healthyNodeCnt++
 			} else {
-				if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 					unknownNodeCnt++
 				} else {
 					unhealthyNodeCnt++
@@ -347,7 +347,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			fsUse := "0Ki"
 			fsCapaUse := "0Ki"
 
-			fmt.Println("clusterCPUCapSum", clusterCPUCapSum)
+			// fmt.Println("clusterCPUCapSum", clusterCPUCapSum)
 			//  cluster CPU Usage, Memroy Usage 확인
 			if clMetricData["nodemetrics"] != nil {
 				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
@@ -411,7 +411,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		clusterCPURank := reverseRank(clusterCPURes, 5)
 		clusterMemRank := reverseRank(clusterMemoryRes, 5)
 
-		fmt.Println(clusterCPURank, clusterMemRank)
+		// fmt.Println(clusterCPURank, clusterMemRank)
 
 		for _, r := range nodeNameList {
 			nodeCPUPecent := PercentChange(float64(nodeResCPU[r]), float64(clusterCPUCapSum))
@@ -420,7 +420,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 		nodeCPURank := reverseRank(nodeResCPU, 5)
 		nodeMemRank := reverseRank(nodeResMem, 5)
-		fmt.Println(nodeCPURank, nodeMemRank)
+		// fmt.Println(nodeCPURank, nodeMemRank)
 		// nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
 		nodeResCPUSumStr := nodeResCPUSum / 1000 / 1000 / 1000
 		// nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
@@ -429,7 +429,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		nodeResFSSumStr := float64(nodeResFSSum) / 1000 / 1000
 		// nodeResFSCapaSumStr := fmt.Sprintf("%.1f", float64(nodeResFSCapaSum)/1000/1000)
 		nodeResFSCapaSumStr := float64(nodeResFSCapaSum) / 1000 / 1000
-		fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
+		// fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
 
 		config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
 		clientset, _ := kubernetes.NewForConfig(config)
@@ -470,7 +470,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			kubeStatus = append(kubeStatus, NameStatus{name, state})
 
 		}
-		fmt.Println(kubeStatus)
+		// fmt.Println(kubeStatus)
 		kubeStatus = append(kubeStatus, NameStatus{"Nodes", nodeStatus})
 
 		eventsURL := "http://" + openmcpURL + "/api/v1/events?clustername=" + clusterNm
