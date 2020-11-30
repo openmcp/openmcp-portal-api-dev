@@ -154,7 +154,9 @@ func ClusterHealthCheck(condType string) string {
 func GetInfluxPodsMetric(clusterName string, in *Influx) []client.Result {
 	q := client.Query{}
 	// q = client.NewQuery("SELECT last(*) FROM Pods WHERE cluster = '"+clusterName+"' ORDER BY DESC LIMIT 1", "Metrics", "")
-	q = client.NewQuery("select last(*) from Pods where time > now() - 1m and cluster='"+clusterName+"' group by namespace,pod,time(1m) order by desc limit 1", "Metrics", "")
+	// select last(*) from Pods where time > now() - 5m and cluster='cluster1' group by namespace,pod order by desc limit 1
+	q = client.NewQuery("select last(*) from Pods where time > now() - 5m and cluster='"+clusterName+"' group by namespace,pod order by desc limit 1", "Metrics", "")
+
 	//select last(*) from Pods where time > now() -1m and cluster='cluster1' group by namespace,pod,time(1m)
 	response, err := in.inClient.Query(q)
 
