@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -45,7 +44,7 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 				labels = map[string]interface{}{}
 			} else {
 				for key, val := range labelCheck.(map[string]interface{}) {
-					fmt.Println(key, val)
+					// fmt.Println(key, val)
 					labels[key] = val
 				}
 			}

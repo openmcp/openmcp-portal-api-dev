@@ -144,7 +144,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		podResult := <-ch
 		podData := podResult.data
 		podItems := podData["items"].([]interface{})
-		fmt.Println("podItmes len:", len(podItems))
+		// fmt.Println("podItmes len:", len(podItems))
 
 		// get podUsage counts by nodename groups
 		for _, element := range podItems {
@@ -152,7 +152,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			nodeName := "-"
 			if nodeCheck == nil {
 				nodeName = "-"
-				fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
+				// fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
 			} else {
 				nodeName = nodeCheck.(string)
 			}
@@ -184,7 +184,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	clusterName := vars["clusterName"]
-	fmt.Println(clusterName)
+	// fmt.Println(clusterName)
 
 	resNode := NodeRes{}
 	node := NodeInfo{}
@@ -247,7 +247,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 
 		clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
 
-		fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
+		// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
 
 		go CallAPI(token, clMetricURL, ch)
 		clMetricResult := <-ch
@@ -308,7 +308,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 		nodeName := "-"
 		if nodeCheck == nil {
 			nodeName = "-"
-			fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
+			// fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
 		} else {
 			nodeName = nodeCheck.(string)
 		}
