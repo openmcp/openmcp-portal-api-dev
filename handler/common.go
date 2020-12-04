@@ -99,7 +99,8 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
+		fmt.Print(err)
 	}
 	var data map[string]interface{}
 
@@ -109,7 +110,7 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	if err != nil {
 		// ch <- fmt.Sprintf("while reading %s: %v", url, err)
 		// return
-		log.Fatal(err)
+		fmt.Print(err)
 	}
 	json.Unmarshal([]byte(bodyBytes), &data)
 

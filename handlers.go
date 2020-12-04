@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"portal-api-server/cloud"
 	"portal-api-server/handler"
@@ -204,10 +205,13 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	akid := "AKIAJGFO6OXHRN2H6DSA"
-	secretkey := "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"
+	//akid := "AKIAJGFO6OXHRN2H6DSA"                          //
+	// secretkey := "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" //
+	akid := "AKIAVJTB7UPJPEMHUAJR"
+	secretkey := "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" //
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("ap-northeast-2"),
+		// Region:      aws.String("	ap-northeast-2"), //
+		Region:      aws.String("eu-west-2"), //
 		Credentials: credentials.NewStaticCredentials(akid, secretkey, ""),
 	})
 
@@ -219,19 +223,19 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 	svc := eks.New(sess)
 
 	result, err := svc.ListNodegroups(&eks.ListNodegroupsInput{
-		ClusterName: aws.String("testcluster"),
+		ClusterName: aws.String("eks-cluster1"), //
 	})
 
 	nodegroupname := result.Nodegroups[0]
 
 	result2, err := svc.DescribeNodegroup(&eks.DescribeNodegroupInput{
-		ClusterName:   aws.String("testcluster"),
+		ClusterName:   aws.String("eks-cluster1"), //
 		NodegroupName: aws.String(*nodegroupname),
 	})
 
 	beforecnt := result2.Nodegroup.ScalingConfig.DesiredSize
 	var nodecnt int64
-	nodecnt = -1
+	nodecnt = 1
 	desirecnt := *beforecnt + nodecnt
 
 	// // la := make(map[string]*string)
@@ -241,7 +245,7 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 	// labelinput := eks.UpdateLabelsPayload{la["newlabel01"]}
 
 	addResult, err := svc.UpdateNodegroupConfig(&eks.UpdateNodegroupConfigInput{
-		ClusterName:   aws.String("testcluster"),
+		ClusterName:   aws.String("eks-cluster1"), //
 		NodegroupName: aws.String(*nodegroupname),
 		// Labels:        &eks.UpdateLabelsPayload{AddOrUpdateLabels: la},
 		ScalingConfig: &eks.NodegroupScalingConfig{DesiredSize: &desirecnt},
@@ -252,7 +256,7 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(errmsg)
 	}
 
-	// fmt.Println(addResult)
+	fmt.Println(addResult)
 
 }
 

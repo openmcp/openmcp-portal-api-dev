@@ -209,7 +209,9 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		fsUseSumS := fmt.Sprintf("%.1f", fsUseSumF)
 		fsCapSumF := float64(fsCapSum) / 1000 / 1000
 		fsCapSumS := fmt.Sprintf("%.1f", fsCapSumF)
-		networkSumS := strconv.Itoa(networkSum)
+		networkCapSumF := float64(networkSum) / 1000 / 1000 / 1000 / 1000
+		networkCapSumS := fmt.Sprintf("%.1f", networkCapSumF)
+		// networkSumS := strconv.Itoa(networkSum)
 
 		// fmt.Println(fsUseSumS, fsCapSumS)
 
@@ -217,7 +219,7 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Cpu = cpuUseSumS + "/" + strconv.Itoa(cpuCapSum) + " Core"
 		resCluster.Clusters[i].Ram = memoryUseSumS + "/" + memoryCapSumS + " Gi"
 		resCluster.Clusters[i].Disk = PercentUseString(fsUseSumS, fsCapSumS) + "%"
-		resCluster.Clusters[i].Network = networkSumS + " bytes"
+		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
 	}
 	// fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
