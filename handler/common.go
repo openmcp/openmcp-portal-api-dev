@@ -206,3 +206,105 @@ func buildConfigFromFlags(context, kubeconfigPath string) (*rest.Config, error) 
 func Round(x, unit float64) float64 {
 	return math.Round(x/unit) * unit
 }
+
+func GetStringElement(nMap interface{}, keys []string) string {
+	result := ""
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				result = childMap.(string)
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = "-"
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = "-"
+					break
+				}
+			}
+		}
+	} else {
+		result = "-"
+	}
+	return result
+}
+
+func GetIntElement(nMap interface{}, keys []string) int {
+	result := 0
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				result = childMap.(int)
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0
+					break
+				}
+			}
+		}
+	} else {
+		result = 0
+	}
+	return result
+}
+
+func GetFloatElement(nMap interface{}, keys []string) float64 {
+	var result float64 = 0.0
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				result = childMap.(float64)
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0.0
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0.0
+					break
+				}
+			}
+		}
+	} else {
+		result = 0.0
+	}
+	return result
+}
