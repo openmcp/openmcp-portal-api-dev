@@ -36,9 +36,18 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		cluster := ClusterInfo{}
-		region := element.(map[string]interface{})["status"].(map[string]interface{})["region"].(string)
-		zones := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		region := GetStringElement(element, []string{"status", "region"})
+		zones := GetStringElement(element, []string{"status", "zones"})
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		if clusterType == "Ready" {
+			clusterNames = append(clusterNames, clusterName)
+			cluster.Name = clusterName
+			cluster.Provider = "-"
+			cluster.Zones = zones
+			cluster.Region = region
+			resCluster.Clusters = append(resCluster.Clusters, cluster)
+		}
 
 		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
@@ -52,12 +61,6 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		// } else {
 		// 	clusterStatus = "Unknown"
 		// }
-		cluster.Name = clusterName
-		cluster.Provider = "-"
-		cluster.Zones = zones
-		cluster.Region = region
-		resCluster.Clusters = append(resCluster.Clusters, cluster)
-		clusterNames = append(clusterNames, clusterName)
 	}
 
 	for i, cluster := range resCluster.Clusters {
@@ -81,22 +84,26 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
-			nodeName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			fmt.Println(nodeName)
 			status := ""
 			statusInfo := element.(map[string]interface{})["status"]
+			//GetStringElement(element, []string{"status"})
+
 			var healthCheck = make(map[string]string)
 			for _, elem := range statusInfo.(map[string]interface{})["conditions"].([]interface{}) {
-				conType := elem.(map[string]interface{})["type"].(string)
-				tf := elem.(map[string]interface{})["status"].(string)
+				conType := GetStringElement(elem, []string{"type"})
+				// elem.(map[string]interface{})["type"].(string)
+				tf := GetStringElement(elem, []string{"status"})
+				// elem.(map[string]interface{})["status"].(string)
 				healthCheck[conType] = tf
 			}
 
-			if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 				// healthyNodeCnt++
 				status = "Healthy"
 			} else {
-				if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 					status = "Unknown"
 				} else {
 					status = "Unhealthy"
@@ -108,10 +115,11 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 				resCluster.Clusters[i].Status = "Unhealthy"
 			}
 
-			cpuCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
+			cpuCapacity := GetStringElement(element, []string{"status", "capacity", "cpu"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
 			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
-
-			memoryCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
+			memoryCapacity := GetStringElement(element, []string{"status", "capacity", "memory"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
 
@@ -209,7 +217,9 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		fsUseSumS := fmt.Sprintf("%.1f", fsUseSumF)
 		fsCapSumF := float64(fsCapSum) / 1000 / 1000
 		fsCapSumS := fmt.Sprintf("%.1f", fsCapSumF)
-		networkSumS := strconv.Itoa(networkSum)
+		networkCapSumF := float64(networkSum) / 1000 / 1000 / 1000 / 1000
+		networkCapSumS := fmt.Sprintf("%.1f", networkCapSumF)
+		// networkSumS := strconv.Itoa(networkSum)
 
 		// fmt.Println(fsUseSumS, fsCapSumS)
 
@@ -217,9 +227,9 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Cpu = cpuUseSumS + "/" + strconv.Itoa(cpuCapSum) + " Core"
 		resCluster.Clusters[i].Ram = memoryUseSumS + "/" + memoryCapSumS + " Gi"
 		resCluster.Clusters[i].Disk = PercentUseString(fsUseSumS, fsCapSumS) + "%"
-		resCluster.Clusters[i].Network = networkSumS + " bytes"
+		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
 	}
-	fmt.Println(resCluster.Clusters)
+	// fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
@@ -316,10 +326,10 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 			}
 
-			if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 				healthyNodeCnt++
 			} else {
-				if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 					unknownNodeCnt++
 				} else {
 					unhealthyNodeCnt++
@@ -347,7 +357,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			fsUse := "0Ki"
 			fsCapaUse := "0Ki"
 
-			fmt.Println("clusterCPUCapSum", clusterCPUCapSum)
+			// fmt.Println("clusterCPUCapSum", clusterCPUCapSum)
 			//  cluster CPU Usage, Memroy Usage 확인
 			if clMetricData["nodemetrics"] != nil {
 				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
@@ -411,7 +421,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		clusterCPURank := reverseRank(clusterCPURes, 5)
 		clusterMemRank := reverseRank(clusterMemoryRes, 5)
 
-		fmt.Println(clusterCPURank, clusterMemRank)
+		// fmt.Println(clusterCPURank, clusterMemRank)
 
 		for _, r := range nodeNameList {
 			nodeCPUPecent := PercentChange(float64(nodeResCPU[r]), float64(clusterCPUCapSum))
@@ -420,7 +430,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 		nodeCPURank := reverseRank(nodeResCPU, 5)
 		nodeMemRank := reverseRank(nodeResMem, 5)
-		fmt.Println(nodeCPURank, nodeMemRank)
+		// fmt.Println(nodeCPURank, nodeMemRank)
 		// nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
 		nodeResCPUSumStr := nodeResCPUSum / 1000 / 1000 / 1000
 		// nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
@@ -429,7 +439,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		nodeResFSSumStr := float64(nodeResFSSum) / 1000 / 1000
 		// nodeResFSCapaSumStr := fmt.Sprintf("%.1f", float64(nodeResFSCapaSum)/1000/1000)
 		nodeResFSCapaSumStr := float64(nodeResFSCapaSum) / 1000 / 1000
-		fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
+		// fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
 
 		config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
 		clientset, _ := kubernetes.NewForConfig(config)
@@ -470,7 +480,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			kubeStatus = append(kubeStatus, NameStatus{name, state})
 
 		}
-		fmt.Println(kubeStatus)
+		// fmt.Println(kubeStatus)
 		kubeStatus = append(kubeStatus, NameStatus{"Nodes", nodeStatus})
 
 		eventsURL := "http://" + openmcpURL + "/api/v1/events?clustername=" + clusterNm

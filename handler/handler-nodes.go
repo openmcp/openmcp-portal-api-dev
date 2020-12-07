@@ -64,11 +64,11 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				healthCheck[conType] = tf
 			}
 
-			if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 				// healthyNodeCnt++
 				status = "Healthy"
 			} else {
-				if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 					status = "Unknown"
 				} else {
 					status = "Unhealthy"
@@ -131,8 +131,8 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			node.Status = status
 			node.Role = role
 			node.SystemVersion = os + "|" + "(" + containerRuntimeVersion + ")"
-			node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + "|Core"
-			node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + "|GIB"
+			node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + " Core"
+			node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + " GIB"
 			node.Pods = podsCapacity
 
 			resNode.Nodes = append(resNode.Nodes, node)
@@ -168,7 +168,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				// a := podsCount[v.Name]
 				podsUsage := strconv.Itoa(podsCount[resNode.Nodes[i].Name])
 				capacity := resNode.Nodes[i].Pods
-				resNode.Nodes[i].Pods = PercentUseString(podsUsage, capacity) + "%" + "|" + podsUsage + " / " + capacity
+				resNode.Nodes[i].Pods = PercentUseString(podsUsage, capacity) + "%" + "|" + podsUsage + " / " + capacity + " pods"
 
 				// fmt.Println(resNode.Nodes[i].Pods)
 			}
@@ -220,11 +220,11 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 			healthCheck[conType] = tf
 		}
 
-		if healthCheck["Ready"] == "True" && healthCheck["NetworkUnavailable"] == "False" && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+		if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
 			// healthyNodeCnt++
 			status = "Healthy"
 		} else {
-			if healthCheck["Ready"] == "Unknown" || healthCheck["NetworkUnavailable"] == "Unknown" || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+			if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
 				status = "Unknown"
 			} else {
 				status = "Unhealthy"
@@ -288,8 +288,8 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 		node.Status = status
 		node.Role = role
 		node.SystemVersion = os + "|" + "(" + containerRuntimeVersion + ")"
-		node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + "|Core"
-		node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + "|GIB"
+		node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + " Core"
+		node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + " GIB"
 		node.Pods = podsCapacity
 
 		resNode.Nodes = append(resNode.Nodes, node)
@@ -323,7 +323,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 				// a := podsCount[v.Name]
 				podsUsage := strconv.Itoa(podsCount[resNode.Nodes[i].Name])
 				capacity := resNode.Nodes[i].Pods
-				resNode.Nodes[i].Pods = PercentUseString(podsUsage, capacity) + "%" + "|" + podsUsage + " / " + capacity
+				resNode.Nodes[i].Pods = PercentUseString(podsUsage, capacity) + "%" + "|" + podsUsage + " / " + capacity + " pods"
 
 				// fmt.Println(resNode.Nodes[i].Pods)
 			}

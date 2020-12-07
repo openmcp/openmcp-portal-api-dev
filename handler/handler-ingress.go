@@ -20,26 +20,28 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterNames = append(clusterNames, clusterName)
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		if clusterType == "Ready" {
+			clusterNames = append(clusterNames, clusterName)
+		}
 	}
 
 	for _, clusterName := range clusterNames {
 		ingress := IngerssInfo{}
 		ingressURL := "http://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + clusterName
 		go CallAPI(token, ingressURL, ch)
+
 		ingressResult := <-ch
 		ingressData := ingressResult.data
 		ingressItems := ingressData["items"].([]interface{})
 
-		// get service Information
 		if ingressItems != nil {
 			for _, element := range ingressItems {
-				name := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-				namespace := element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-				ipAddress := element.(map[string]interface{})["status"].(map[string]interface{})["loadBalancer"].(map[string]interface{})["ingress"].([]interface{})[0].(map[string]interface{})["ip"].(string)
-
-				createTime := element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+				name := GetStringElement(element, []string{"metadata", "name"})
+				namespace := GetStringElement(element, []string{"metadata", "namespace"})
+				ipAddress := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
+				createTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
 
 				ingress.Name = name
 				ingress.Project = namespace
