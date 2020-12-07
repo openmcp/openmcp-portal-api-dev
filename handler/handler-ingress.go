@@ -5,15 +5,6 @@ import (
 	"net/http"
 )
 
-/*
-1. get services
-http://192.168.0.152:31635/apis/networking.k8s.io/v1beta1/ingresses?clustername=cluster1
-name : items > metatdata > name
-namespace : items > metadata > namespace (project)
-address : items > status > loadBalancer > ingress[] > ip
-createdTime : items > metadata > creationTimestamp > 여러개 나옴 (key:value 형태로 가져오기)
-*/
-
 func Ingress(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
