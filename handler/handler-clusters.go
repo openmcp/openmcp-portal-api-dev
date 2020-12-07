@@ -115,12 +115,11 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 				resCluster.Clusters[i].Status = "Unhealthy"
 			}
 
-			cpuCapacity := GetStringElement(elem, []string{"status", "capacity", "cpu"})
+			cpuCapacity := GetStringElement(element, []string{"status", "capacity", "cpu"})
 			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
 			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
-
-			memoryCapacity := GetStringElement(elem, []string{"status", "capacity", "memory"})
-			element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
+			memoryCapacity := GetStringElement(element, []string{"status", "capacity", "memory"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
 
