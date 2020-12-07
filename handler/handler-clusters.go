@@ -36,9 +36,18 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		cluster := ClusterInfo{}
-		region := element.(map[string]interface{})["status"].(map[string]interface{})["region"].(string)
-		zones := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		region := GetStringElement(element, []string{"status", "region"})
+		zones := GetStringElement(element, []string{"status", "zones"})
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		if clusterType == "Ready" {
+			clusterNames = append(clusterNames, clusterName)
+			cluster.Name = clusterName
+			cluster.Provider = "-"
+			cluster.Zones = zones
+			cluster.Region = region
+			resCluster.Clusters = append(resCluster.Clusters, cluster)
+		}
 
 		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
@@ -52,12 +61,6 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		// } else {
 		// 	clusterStatus = "Unknown"
 		// }
-		cluster.Name = clusterName
-		cluster.Provider = "-"
-		cluster.Zones = zones
-		cluster.Region = region
-		resCluster.Clusters = append(resCluster.Clusters, cluster)
-		clusterNames = append(clusterNames, clusterName)
 	}
 
 	for i, cluster := range resCluster.Clusters {
@@ -81,14 +84,18 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
-			nodeName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			fmt.Println(nodeName)
 			status := ""
 			statusInfo := element.(map[string]interface{})["status"]
+			//GetStringElement(element, []string{"status"})
+
 			var healthCheck = make(map[string]string)
 			for _, elem := range statusInfo.(map[string]interface{})["conditions"].([]interface{}) {
-				conType := elem.(map[string]interface{})["type"].(string)
-				tf := elem.(map[string]interface{})["status"].(string)
+				conType := GetStringElement(elem, []string{"type"})
+				// elem.(map[string]interface{})["type"].(string)
+				tf := GetStringElement(elem, []string{"status"})
+				// elem.(map[string]interface{})["status"].(string)
 				healthCheck[conType] = tf
 			}
 
@@ -108,10 +115,12 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 				resCluster.Clusters[i].Status = "Unhealthy"
 			}
 
-			cpuCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
+			cpuCapacity := GetStringElement(elem, []string{"status", "capacity", "cpu"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
 			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
 
-			memoryCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
+			memoryCapacity := GetStringElement(elem, []string{"status", "capacity", "memory"})
+			element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
 

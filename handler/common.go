@@ -215,7 +215,11 @@ func GetStringElement(nMap interface{}, keys []string) string {
 			typeCheck := fmt.Sprintf("%T", childMap)
 
 			if len(keys)-1 == i {
-				result = childMap.(string)
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(string)
+				} else {
+					result = childMap.(string)
+				}
 				break
 			}
 
@@ -249,7 +253,11 @@ func GetIntElement(nMap interface{}, keys []string) int {
 			typeCheck := fmt.Sprintf("%T", childMap)
 
 			if len(keys)-1 == i {
-				result = childMap.(int)
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(int)
+				} else {
+					result = childMap.(int)
+				}
 				break
 			}
 
@@ -283,7 +291,11 @@ func GetFloatElement(nMap interface{}, keys []string) float64 {
 			typeCheck := fmt.Sprintf("%T", childMap)
 
 			if len(keys)-1 == i {
-				result = childMap.(float64)
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(float64)
+				} else {
+					result = childMap.(float64)
+				}
 				break
 			}
 
@@ -305,6 +317,46 @@ func GetFloatElement(nMap interface{}, keys []string) float64 {
 		}
 	} else {
 		result = 0.0
+	}
+	return result
+}
+
+
+
+func GetInterfaceElement(nMap interface{}, keys []string) interface{} {
+	var result interface{}
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0]
+				} else {
+					result = childMap
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			}
+		}
+	} else {
+		result = nil
 	}
 	return result
 }
