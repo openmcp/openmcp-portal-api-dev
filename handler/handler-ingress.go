@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func Ingress(w http.ResponseWriter, r *http.Request) {
@@ -56,8 +58,40 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resIngress.Ingress)
 }
 
-//get cluster-overview list handler
+func GetIngressInProject(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
 
-//get cluster-node list handler
+	vars := mux.Vars(r)
+	clusterName := vars["clusterName"]
+	projectName := vars["projectName"]
 
-//get cluster-pods list handler
+	resIngress := IngerssRes{}
+	ingress := IngerssInfo{}
+	// "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?
+	ingressURL := "http://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/namespaces/" + projectName + "/ingresses?clustername=" + clusterName
+
+	go CallAPI(token, ingressURL, ch)
+
+	ingressResult := <-ch
+	ingressData := ingressResult.data
+	ingressItems := ingressData["items"].([]interface{})
+
+	if ingressItems != nil {
+		for _, element := range ingressItems {
+			name := GetStringElement(element, []string{"metadata", "name"})
+			namespace := GetStringElement(element, []string{"metadata", "namespace"})
+			ipAddress := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
+			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+
+			ingress.Name = name
+			ingress.Project = namespace
+			ingress.Address = ipAddress
+			ingress.CreatedTime = createdTime
+			ingress.Cluster = clusterName
+
+			resIngress.Ingress = append(resIngress.Ingress, ingress)
+		}
+	}
+	json.NewEncoder(w).Encode(resIngress.Ingress)
+}

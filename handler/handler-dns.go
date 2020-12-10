@@ -6,15 +6,13 @@ import (
 	"net/http"
 )
 
-/*
-1. get dns
-/apis/openmcp.k8s.io/v1alpha1/namespaces/default/openmcpdnsendpoints/
-name : items > metatdata > name
-namespace : items > metadata > namespace (project)
-type : items > spec > type(string)
-selector : items > spec > selector > 여러개 나옴 (key:value 형태로 가져오기)
-port : items > spec > ports[여러개 나옴] > 안에 있는것 모두 나열
-*/
+// 1. get dns
+// /apis/openmcp.k8s.io/v1alpha1/namespaces/default/openmcpdnsendpoints/
+// name : items > metatdata > name
+// namespace : items > metadata > namespace (project)
+// type : items > spec > type(string)
+// selector : items > spec > selector > 여러개 나옴 (key:value 형태로 가져오기)
+// port : items > spec > ports[여러개 나옴] > 안에 있는것 모두 나열
 
 func Dns(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
@@ -36,26 +34,36 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterNames = append(clusterNames, clusterName)
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		if clusterType == "Ready" {
+			clusterNames = append(clusterNames, clusterName)
+		}
+
 	}
 
 	for _, clusterName := range clusterNames {
-		service := ServicesInfo{}
-		serviceURL := "http://" + openmcpURL + "/api/v1/services?clustername=" + clusterName
-		go CallAPI(token, serviceURL, ch)
-		serviceResult := <-ch
-		serviceData := serviceResult.data
-		serviceItems := serviceData["items"].([]interface{})
+		service := ServiceInfo{}
+
+		dnsURL := "http://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + clusterName
+		go CallAPI(token, dnsURL, ch)
+		dnsResult := <-ch
+		dnsData := dnsResult.data
+		dnsItems := dnsData["items"].([]interface{})
 
 		// get service Information
-		for _, element := range serviceItems {
-			name := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			namespace := element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-			serviceType := element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
+		for _, element := range dnsItems {
+			name := GetStringElement(element, []string{"metadata", "name"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+			namespace := GetStringElement(element, []string{"metadata", "namespace"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+			serviceType := GetStringElement(element, []string{"spec", "type"})
+			// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
 
 			selector := ""
-			selectorCheck := element.(map[string]interface{})["spec"].(map[string]interface{})["selector"]
+			selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
+			// element.(map[string]interface{})["spec"].(map[string]interface{})["selector"]
 			if selectorCheck != nil {
 				i := 0
 				for key, val := range selectorCheck.(map[string]interface{}) {
@@ -72,7 +80,8 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 			}
 
 			port := ""
-			portCheck := element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
+			portCheck := GetArrayElement(element, []string{"spec", "ports"})
+			// element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
 			if portCheck != nil {
 				for i, item := range portCheck {
 					j := 0
@@ -93,7 +102,8 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 			} else {
 				port = "-"
 			}
-			createdTime := element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
 
 			service.Cluster = clusterName
 			service.Name = name
@@ -101,7 +111,7 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 			service.Type = serviceType
 			service.Selector = selector
 			service.Port = port
-			service.CreateTime = createdTime
+			service.CreatedTime = createdTime
 
 			resServices.Services = append(resServices.Services, service)
 		}
