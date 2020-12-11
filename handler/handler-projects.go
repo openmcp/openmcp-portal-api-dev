@@ -19,8 +19,12 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 	clusterNames = append(clusterNames, "openmcp")
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterNames = append(clusterNames, clusterName)
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		if clusterType == "Ready" {
+			clusterNames = append(clusterNames, clusterName)
+		}
 	}
 
 	for _, clusterName := range clusterNames {
@@ -33,12 +37,16 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 		// get podUsage counts by nodename groups
 		for _, element := range projectItems {
 			project := ProjectInfo{}
-			projectName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			createdTime := element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-			status := element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
+			projectName := GetStringElement(element, []string{"metadata", "name"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+			status := GetStringElement(element, []string{"status", "phase"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
 
 			labels := make(map[string]interface{})
-			labelCheck := element.(map[string]interface{})["metadata"].(map[string]interface{})["labels"]
+			labelCheck := GetInterfaceElement(element, []string{"metadata", "labels"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["labels"]
 			if labelCheck == nil {
 				//undefined lable
 				labels = map[string]interface{}{}

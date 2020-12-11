@@ -21,25 +21,6 @@ var routes = Routes{
 		"/apis/yamlapply",
 		YamlApply,
 	},
-	Route{
-		"joinableclusters",
-		"GET",
-		"/apis/joinableclusters",
-		GetJoinableClusters,
-	},
-	Route{
-		"vpa",
-		"GET",
-		"/apis/vpa",
-		GetVPALists,
-	},
-
-	Route{
-		"hpa",
-		"GET",
-		"/apis/hpa",
-		GetHPALists,
-	},
 
 	Route{
 		"addeksnode",
@@ -73,9 +54,14 @@ var routes = Routes{
 		"clusters",
 		"GET",
 		"/apis/clusters",
-		handler.Clusters,
+		handler.GetJoinedClusters,
 	},
-
+	Route{
+		"joinableclusters",
+		"GET",
+		"/apis/joinableclusters",
+		handler.GetJoinableClusters,
+	},
 	Route{
 		"cluster-overview",
 		"GET",
@@ -98,6 +84,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"node-overview",
+		"GET",
+		"/apis/nodes/{nodeName}",
+		handler.NodeOverview,
+	},
+
+	Route{
 		"projects",
 		"GET",
 		"/apis/projects",
@@ -108,7 +101,19 @@ var routes = Routes{
 		"deployments",
 		"GET",
 		"/apis/deployments",
-		handler.Deployments,
+		handler.GetDeployments,
+	},
+	Route{
+		"deploymentsInProject",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments",
+		handler.GetDeploymentsInProject,
+	},
+	Route{
+		"dns",
+		"GET",
+		"/apis/dns",
+		handler.Dns,
 	},
 
 	Route{
@@ -119,23 +124,31 @@ var routes = Routes{
 	},
 
 	Route{
+		"servicesInProject",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/services",
+		handler.GetServicesInProject,
+	},
+
+	Route{
+		"serviceOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/services/{serviceName}",
+		handler.GetServiceOverview,
+	},
+
+	Route{
 		"ingress",
 		"GET",
 		"/apis/ingress",
 		handler.Ingress,
 	},
-	// Route{
-	// 	"projects",
-	// 	"GET",
-	// 	"/apis/clsuters/{clusterName}/projects/{projectName}/deployments",
-	// 	handler.Deployments,
-	// },
 
 	Route{
-		"pods",
+		"ingressInProject",
 		"GET",
-		"/apis/clusters/{clusterName}/pods",
-		handler.PodsInCluster,
+		"/apis/clusters/{clusterName}/projects/{projectName}/ingress",
+		handler.GetIngressInProject,
 	},
 	Route{
 		"pod-overview",
@@ -148,6 +161,69 @@ var routes = Routes{
 		"pods",
 		"GET",
 		"/apis/pods",
-		handler.Pods,
+		handler.GetPods,
+	},
+
+	Route{
+		"vpa",
+		"GET",
+		"/apis/vpa",
+		handler.GetVPAs,
+	},
+
+	Route{
+		"hpa",
+		"GET",
+		"/apis/hpa",
+		handler.GetHPAs,
+	},
+
+	Route{
+		"podsInCluster",
+		"GET",
+		"/apis/clusters/{clusterName}/pods",
+		handler.GetPodsInCluster,
+	},
+
+	Route{
+		"podsInProject",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/pods",
+		handler.GetPodsInProject,
+	},
+
+	Route{
+		"pvcInProject",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/volumes",
+		handler.GetVolumes,
+	},
+
+	Route{
+		"secretInProject",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/secrets",
+		handler.GetSecrets,
+	},
+
+	Route{
+		"secretOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/secrets/{secretName}",
+		handler.GetSecretOverView,
+	},
+
+	Route{
+		"configmapInProject",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/configmaps",
+		handler.GetConfigmaps,
+	},
+
+	Route{
+		"configmapOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/configmaps/{configmapName}",
+		handler.GetConfigmapOverView,
 	},
 }

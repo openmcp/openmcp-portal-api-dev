@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func Clusters(w http.ResponseWriter, r *http.Request) {
+func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
@@ -85,7 +85,7 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
 			nodeName := GetStringElement(element, []string{"metadata", "name"})
-			fmt.Println(nodeName)
+			// fmt.Println(nodeName)
 			status := ""
 			statusInfo := element.(map[string]interface{})["status"]
 			//GetStringElement(element, []string{"status"})
@@ -142,7 +142,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 			if clMetricData["nodemetrics"] != nil {
 				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
 
-					cpuUseCheck := element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
+					cpuUseCheck := GetInterfaceElement(element, []string{"cpu", "CPUUsageNanoCores"})
+					// element.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"]
 					if cpuUseCheck == nil {
 						cpuUse = "0n"
 					} else {
@@ -151,7 +152,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 					cpuUse = strings.Split(cpuUse, "n")[0]
 					cpuUseInt, _ := strconv.Atoi(cpuUse)
 
-					memoryUseCheck := element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
+					memoryUseCheck := GetInterfaceElement(element, []string{"memory", "MemoryUsageBytes"})
+					// element.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"]
 					if memoryUseCheck == nil {
 						memoryUse = "0Ki"
 					} else {
@@ -163,7 +165,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 					cpuUseSum += cpuUseInt
 					memoryUseSum += memoryUseInt
 
-					fsCapCheck := element.(map[string]interface{})["fs"].(map[string]interface{})["FsCapacityBytes"]
+					fsCapCheck := GetInterfaceElement(element, []string{"fs", "FsCapacityBytes"})
+					// element.(map[string]interface{})["fs"].(map[string]interface{})["FsCapacityBytes"]
 					if fsCapCheck == nil {
 						fsCap = "0Ki"
 					} else {
@@ -173,7 +176,8 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 					fsCapInt, _ := strconv.Atoi(fsCap)
 					fsCapSum += fsCapInt
 
-					fsUseCheck := element.(map[string]interface{})["fs"].(map[string]interface{})["FsUsedBytes"]
+					fsUseCheck := GetInterfaceElement(element, []string{"fs", "FsUsedBytes"})
+					// element.(map[string]interface{})["fs"].(map[string]interface{})["FsUsedBytes"]
 					if fsUseCheck == nil {
 						fsUse = "0Ki"
 					} else {
@@ -183,13 +187,15 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 					fsUseInt, _ := strconv.Atoi(fsUse)
 					fsUseSum += fsUseInt
 
-					ntRxCheck := element.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"]
+					ntRxCheck := GetInterfaceElement(element, []string{"network", "NetworkRxBytes"})
+					// element.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"]
 					if ntRxCheck == nil {
 						ntRx = "0"
 					} else {
 						ntRx = ntRxCheck.(string)
 					}
-					ntTxCheck := element.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"]
+					ntTxCheck := GetInterfaceElement(element, []string{"network", "NetworkTxBytes"})
+					// element.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"]
 					if ntTxCheck == nil {
 						ntTx = "0"
 					} else {
@@ -233,11 +239,42 @@ func Clusters(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
-//get cluster-overview list handler
+func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-//get cluster-node list handler
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
 
-//get cluster-pods list handler
+	url := "http://" + openmcpURL + "/joinable"
+	go CallAPI(token, url, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+
+	type joinable struct {
+		Name     string `json:"name"`
+		Endpoint string `json:"endpoint"`
+		Platform string `json:"platform"`
+		Region   string `json:"region"`
+		Zone     string `json:"zone"`
+	}
+
+	var joinableLists []joinable
+	if clusterData["items"] != nil {
+		for _, element := range clusterData["items"].([]interface{}) {
+			name := element.(map[string]interface{})["name"].(string)
+			endpoint := element.(map[string]interface{})["endpoint"].(string)
+			platform := element.(map[string]interface{})["platform"].(string)
+			region := element.(map[string]interface{})["region"].(string)
+			zone := element.(map[string]interface{})["zone"].(string)
+			res := joinable{name, endpoint, platform, region, zone}
+			joinableLists = append(joinableLists, res)
+		}
+		json.NewEncoder(w).Encode(joinableLists)
+	} else {
+		json.NewEncoder(w).Encode(joinableLists)
+	}
+}
 
 func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 	clusterNm := r.URL.Query().Get("clustername")

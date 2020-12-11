@@ -402,7 +402,7 @@ func GetIntElement(nMap interface{}, keys []string) int {
 	return result
 }
 
-func GetFloatElement(nMap interface{}, keys []string) float64 {
+func GetFloat64Element(nMap interface{}, keys []string) float64 {
 	var result float64 = 0.0
 	if nMap.(map[string]interface{})[keys[0]] != nil {
 		childMap := nMap.(map[string]interface{})[keys[0]]
@@ -452,6 +452,44 @@ func GetInterfaceElement(nMap interface{}, keys []string) interface{} {
 					result = childMap.([]interface{})[0]
 				} else {
 					result = childMap
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			}
+		}
+	} else {
+		result = nil
+	}
+	return result
+}
+
+func GetArrayElement(nMap interface{}, keys []string) []interface{} {
+	var result []interface{}
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})
+				} else {
+					result = childMap.([]interface{})
 				}
 				break
 			}
