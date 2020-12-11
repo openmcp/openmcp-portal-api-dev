@@ -150,6 +150,12 @@ var routes = Routes{
 		"/apis/clusters/{clusterName}/projects/{projectName}/ingress",
 		handler.GetIngressInProject,
 	},
+	Route{
+		"pod-overview",
+		"GET",
+		"/apis/pod/overview",
+		handler.PodOverview,
+	},
 
 	Route{
 		"ingressOverview",
