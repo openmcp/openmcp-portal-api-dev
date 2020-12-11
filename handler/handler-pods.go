@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -262,8 +261,6 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPodsInProject(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("GetPodsInProject")
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 

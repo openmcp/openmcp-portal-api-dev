@@ -209,6 +209,7 @@ func Round(x, unit float64) float64 {
 
 func GetStringElement(nMap interface{}, keys []string) string {
 	result := ""
+
 	if nMap.(map[string]interface{})[keys[0]] != nil {
 		childMap := nMap.(map[string]interface{})[keys[0]]
 		for i, _ := range keys {

@@ -152,6 +152,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"ingressOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/ingress/{ingressName}",
+		handler.GetIngressOverview,
+	},
+
+	Route{
 		"pods",
 		"GET",
 		"/apis/pods",
@@ -191,6 +198,13 @@ var routes = Routes{
 		"GET",
 		"/apis/clusters/{clusterName}/projects/{projectName}/volumes",
 		handler.GetVolumes,
+	},
+
+	Route{
+		"pvcOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}/volumes/{volumeName}",
+		handler.GetVolumeOverview,
 	},
 
 	Route{

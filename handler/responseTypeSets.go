@@ -157,6 +157,7 @@ type ServiceBasicInfo struct {
 	CreatedTime     string `json:"created_time"`
 }
 
+//Ingress List
 type IngerssRes struct {
 	Ingress []IngerssInfo `json:"ingress"`
 }
@@ -167,6 +168,32 @@ type IngerssInfo struct {
 	Project     string `json:"project"`
 	Address     string `json:"address"`
 	CreatedTime string `json:"created_time"`
+}
+
+//Ingress Overview
+type IngressOverView struct {
+	Info   IngerssInfo `json:"basic_info"`
+	Rules  []Rules     `json:"rules"`
+	Events []Event     `json:"events"`
+}
+
+type Rules struct {
+	Domain   string `json:"domain"`
+	Protocol string `json:"protocol"`
+	Path     string `json:"path"`
+	Services string `json:"services"`
+	Port     string `json:"port"`
+	Secret   string `json:"secret"`
+}
+
+//Cluster Overview
+type ClusterOverView struct {
+	Info             BasicInfo            `json:"basic_info"`
+	PusageTop5       ProjectUsageTop5     `json:"project_usage_top5"`
+	NusageTop5       NodeUsageTop5        `json:"node_usage_top5"`
+	CUsage           ClusterResourceUsage `json:"cluster_resource_usage"`
+	KubernetesStatus []NameStatus         `json:"kubernetes_status"`
+	Events           []Event              `json:"events"`
 }
 
 type ClusterResourceUsage struct {
@@ -183,15 +210,6 @@ type Unit struct {
 type NameVal struct {
 	Name  string  `json:"name"`
 	Value float64 `json:"value"`
-}
-
-type ClusterOverView struct {
-	Info             BasicInfo            `json:"basic_info"`
-	PusageTop5       ProjectUsageTop5     `json:"project_usage_top5"`
-	NusageTop5       NodeUsageTop5        `json:"node_usage_top5"`
-	CUsage           ClusterResourceUsage `json:"cluster_resource_usage"`
-	KubernetesStatus []NameStatus         `json:"kubernetes_status"`
-	Events           []Event              `json:"events"`
 }
 
 type ProjectUsageTop5 struct {
@@ -230,13 +248,23 @@ type VolumeRes struct {
 }
 
 type VolumeInfo struct {
-	Name        string `json:"name"`
-	Project     string `json:"project"`
-	Status      string `json:"status"`
-	Capacity    string `json:"capacity"`
-	CreatedTime string `json:"created_time"`
+	Name         string `json:"name"`
+	Project      string `json:"project"`
+	Status       string `json:"status"`
+	Capacity     string `json:"capacity"`
+	CreatedTime  string `json:"created_time"`
+	StorageClass string `json:"storage_class"`
+	AccessMode   string `json:"access_mode"`
 }
 
+// VolumeOverview
+type VolumeOverview struct {
+	Info      VolumeInfo `json:"basic_info"`
+	MountedBy []PodInfo  `json:"mounted_by"`
+	Events    []Event    `json:"events"`
+}
+
+// GetVolumeOverview
 // Secret List
 type SecretRes struct {
 	Secrets []SecretInfo `json:"secrets"`
@@ -259,6 +287,7 @@ type Data struct {
 	Value string `json:"value"`
 }
 
+//Configmap List
 type ConfigmapRes struct {
 	Configmaps []ConfigmapInfo `json:"configmaps"`
 }
@@ -270,7 +299,7 @@ type ConfigmapInfo struct {
 	CreatedTime string `json:"created_time"`
 }
 
-//Secret Overview
+//Configmap Overview
 type ConfigmapOverView struct {
 	Info ConfigmapInfo `json:"basic_info"`
 	Data []Data        `json:"data"`
