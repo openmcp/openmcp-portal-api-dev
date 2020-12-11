@@ -282,6 +282,7 @@ type PodOverviewRes struct {
 	Status            []PodOverviewStatus    `json:"pod_status"`
 	PhysicalResources PhysicalResources      `json:"physical_resources"`
 	Event             []Event                `json:"events"`
+}
 type VolumeRes struct {
 	Volumes []VolumeInfo `json:"volumes"`
 }
