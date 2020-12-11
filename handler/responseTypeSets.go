@@ -148,10 +148,69 @@ type BasicInfo struct {
 }
 
 type Event struct {
-	Project string `json:"project"`
+	Project string `json:"project,omitempty"`
 	Typenm  string `json:"type"`
 	Reason  string `json:"reason"`
-	Object  string `json:"object"`
+	Object  string `json:"object,omitempty"`
 	Message string `json:"message"`
 	Time    string `json:"time"`
+}
+
+type PodOverviewInfo struct {
+	Name              string `json:"name"`
+	Status            string `json:"status"`
+	Cluster           string `json:"cluster"`
+	Project           string `json:"project"`
+	PodIP             string `json:"pod_ip"`
+	Node              string `json:"node"`
+	NodeIP            string `json:"node_ip"`
+	Namespace         string `json:"namespace"`
+	TotalRestartCount string `json:"total_restart_count"`
+	CreatedTime       string `json:"created_time"`
+}
+
+type PodOverviewContainer struct {
+	Name         string `json:"name"`
+	Status       string `json:"status"`
+	RestartCount int    `json:"restart_count"`
+	Port         string `json:"port"`
+	Image        string `json:"image"`
+}
+
+type PodOverviewStatus struct {
+	Type       string `json:"type"`
+	Status     string `json:"status"`
+	LastUpdate string `json:"last_update"`
+	Reason     string `json:"reason"`
+	Message    string `json:"message"`
+}
+
+type PodCPUUsageMin struct {
+	CPU  float64 `json:"cpu"`
+	Time string  `json:"time"`
+}
+type PodMemoryUsageMin struct {
+	Memory float64 `json:"memory"`
+	Time   string  `json:"time"`
+}
+
+type PodNetworkUsageMin struct {
+	Unit string `json:"unit"`
+	In   int    `json:"in"`
+	Out  int    `json:"out"`
+	Time string `json:"time"`
+}
+
+type PhysicalResources struct {
+	CPU                []PodCPUUsageMin     `json:"cpu"`
+	Memory             []PodMemoryUsageMin  `json:"memory"`
+	PodNetworkUsageMin []PodNetworkUsageMin `json:"network"`
+}
+
+type PodOverviewRes struct {
+	BasicInfo         PodOverviewInfo        `json:"basic_info"`
+	Containers        []PodOverviewContainer `json:"containers"`
+	Status            []PodOverviewStatus    `json:"pod_status"`
+	PhysicalResources PhysicalResources      `json:"physical_resources"`
+	Event             []Event                `json:"events"`
 }

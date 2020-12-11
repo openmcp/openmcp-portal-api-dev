@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/influxdata/influxdb/client/v2"
@@ -169,6 +170,124 @@ func GetInfluxPodsMetric(clusterName string, in *Influx) []client.Result {
 	return nil
 }
 
+// func GetInfluxPod10mMetric(clusterName string, namespace string, pod string, in *Influx) []client.Result {
+func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) PhysicalResources {
+	nowTime := time.Now().UTC() //.Add(time.Duration(offset) * time.Second)
+	startTime := nowTime.Add(time.Duration(-10) * time.Minute)
+	endTime := nowTime
+	_, offset := time.Now().Zone()
+	start := startTime.Format("2006-01-02_15:04:05")
+	end := endTime.Format("2006-01-02_15:04:05")
+
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+	// http://192.168.0.152:31635/metrics/namespaces/kube-system/pods/kube-flannel-ds-nn5p5?clustername=cluster1&timeStart=2020-09-03_09:00:00&timeEnd=2020-09-03_09:00:15
+
+	podMetricURL := "http://" + openmcpURL + "/metrics/namespaces/" + namespace + "/pods/" + pod + "?clustername=" + clusterName + "&timeStart=" + start + "&timeEnd=" + end
+	go CallAPI(token, podMetricURL, ch)
+
+	podMetricResult := <-ch
+	podMetricData := podMetricResult.data["podmetrics"]
+
+	metricsPerMin := make(map[string][]interface{})
+	for _, m := range podMetricData.([]interface{}) {
+		times := m.(map[string]interface{})["time"].(string)
+		ind := strings.Index(times, ":")
+		timeHM := times[ind-2 : ind+3]
+		timeHM = timeHM + ":00"
+		t1, _ := time.Parse("15:04:05", timeHM)
+		t1 = t1.Add(time.Duration(offset) * time.Second)
+		timeHM = t1.Format("15:04:05")
+
+		metricsPerMin[timeHM] = append(metricsPerMin[timeHM], m)
+	}
+
+	var podCPUUsageMins []PodCPUUsageMin
+	var podMemoryUsageMins []PodMemoryUsageMin
+	var podNetworkUsageMins []PodNetworkUsageMin
+	for k, m := range metricsPerMin {
+		cpuSum := 0
+		memorySum := 0
+		oldNtTxUseInt := 0
+		oldNtRxUseInt := 0
+		maxTxUseInt := 0
+		minTxUseInt := 0
+		maxRxUseInt := 0
+		minRxUseInt := 0
+
+		for index, v := range m {
+			if v.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"] != nil {
+				cpuUse := v.(map[string]interface{})["cpu"].(map[string]interface{})["CPUUsageNanoCores"].(string)
+				cpuUse = strings.Split(cpuUse, "n")[0]
+				cpuUseInt, _ := strconv.Atoi(cpuUse)
+				cpuSum += cpuUseInt
+			}
+
+			if v.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"] != nil {
+				memoryUse := v.(map[string]interface{})["memory"].(map[string]interface{})["MemoryUsageBytes"].(string)
+				memoryUse = strings.Split(memoryUse, "Ki")[0]
+				memoryUseInt, _ := strconv.Atoi(memoryUse)
+				memorySum += memoryUseInt
+			}
+			ntTxUseInt := 0
+			ntRxUseInt := 0
+			if v.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"] != nil {
+				ntTxUse := v.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"].(string)
+				ntTxUseInt, _ = strconv.Atoi(ntTxUse)
+			}
+
+			if v.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"] != nil {
+				ntRxUse := v.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"].(string)
+				ntRxUseInt, _ = strconv.Atoi(ntRxUse)
+			}
+			// fmt.Println(v.(map[string]interface{})["time"], ntTxUseInt, ntRxUseInt)
+			if index == 0 {
+				oldNtTxUseInt = ntTxUseInt
+				oldNtRxUseInt = ntRxUseInt
+				minTxUseInt = ntTxUseInt
+				minRxUseInt = ntRxUseInt
+			} else {
+				if oldNtTxUseInt < ntTxUseInt {
+					maxTxUseInt = ntTxUseInt
+				}
+				if oldNtRxUseInt < ntRxUseInt {
+					maxRxUseInt = ntRxUseInt
+				}
+
+				oldNtTxUseInt = ntTxUseInt
+				oldNtRxUseInt = ntRxUseInt
+			}
+		}
+
+		cpuAvg := float64(cpuSum) / float64(len(m)) / 1000 / 1000 / 1000
+		memoryAvg := float64(memorySum) / float64(len(m)) / 1000
+		inBps := (maxTxUseInt - minTxUseInt) / 60
+		outBps := (maxRxUseInt - minRxUseInt) / 60
+		//fmt.Println(k, "cpu: ", cpuAvg)
+		podCPUUsageMins = append(podCPUUsageMins, PodCPUUsageMin{math.Ceil(cpuAvg*1000) / 1000, k})
+		podMemoryUsageMins = append(podMemoryUsageMins, PodMemoryUsageMin{math.Ceil(memoryAvg*10) / 10, k})
+		podNetworkUsageMins = append(podNetworkUsageMins, PodNetworkUsageMin{"Bps", inBps, outBps, k})
+
+	}
+	sort.Slice(podCPUUsageMins, func(i, j int) bool {
+		return podCPUUsageMins[i].Time < podCPUUsageMins[j].Time
+	})
+	sort.Slice(podMemoryUsageMins, func(i, j int) bool {
+		return podMemoryUsageMins[i].Time < podMemoryUsageMins[j].Time
+	})
+	sort.Slice(podNetworkUsageMins, func(i, j int) bool {
+		return podNetworkUsageMins[i].Time < podNetworkUsageMins[j].Time
+	})
+
+	if len(podCPUUsageMins) > 10 {
+		podCPUUsageMins = podCPUUsageMins[1:]
+		podMemoryUsageMins = podMemoryUsageMins[1:]
+		podNetworkUsageMins = podNetworkUsageMins[1:]
+	}
+	result := PhysicalResources{podCPUUsageMins, podMemoryUsageMins, podNetworkUsageMins}
+	return result
+}
+
 func reverseRank(data map[string]float64, top int) PairList {
 	pl := make(PairList, len(data))
 
@@ -320,8 +439,6 @@ func GetFloatElement(nMap interface{}, keys []string) float64 {
 	}
 	return result
 }
-
-
 
 func GetInterfaceElement(nMap interface{}, keys []string) interface{} {
 	var result interface{}

@@ -137,6 +137,12 @@ var routes = Routes{
 		"/apis/clusters/{clusterName}/pods",
 		handler.PodsInCluster,
 	},
+	Route{
+		"pod-overview",
+		"GET",
+		"/apis/pod/overview",
+		handler.PodOverview,
+	},
 
 	Route{
 		"pods",
