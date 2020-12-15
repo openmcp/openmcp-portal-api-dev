@@ -83,14 +83,14 @@ type PodRes struct {
 type PodInfo struct {
 	Name        string `json:"name"`
 	Status      string `json:"status"`
-	Cluster     string `json:"cluster"`
-	Project     string `json:"project"`
-	PodIP       string `json:"pod_ip"`
-	Node        string `json:"node"`
-	NodeIP      string `json:"node_ip"`
-	Cpu         string `json:"cpu"`
-	Ram         string `json:"memory"`
-	CreatedTime string `json:"created_time"`
+	Cluster     string `json:"cluster,omitempty"`
+	Project     string `json:"project,omitempty"`
+	PodIP       string `json:"pod_ip,omitempty"`
+	Node        string `json:"node,omitempty"`
+	NodeIP      string `json:"node_ip,omitempty"`
+	Cpu         string `json:"cpu,omitempty"`
+	Ram         string `json:"memory,omitempty"`
+	CreatedTime string `json:"created_time,omitempty"`
 }
 
 type HPARes struct {
@@ -116,12 +116,34 @@ type DeploymentRes struct {
 }
 
 type DeploymentInfo struct {
-	Name        string `json:"name"`
-	Status      string `json:"status"`
-	Cluster     string `json:"cluster"`
-	Project     string `json:"project"`
-	Image       string `json:"image"`
-	CreatedTime string `json:"created_time"`
+	Name        string                 `json:"name"`
+	Status      string                 `json:"status,omitempty"`
+	Cluster     string                 `json:"cluster,omitempty"`
+	Project     string                 `json:"project"`
+	Image       string                 `json:"image,omitempty"`
+	CreatedTime string                 `json:"created_time"`
+	Uid         string                 `json:"uid,omitempty"`
+	Labels      map[string]interface{} `json:"labels"`
+}
+
+type DeploymentOverview struct {
+	Info   DeploymentInfo `json:"basic_info"`
+	Pods   []PodInfo      `json:"pods"`
+	Ports  []PortInfo     `json:"ports"`
+	Events []Event        `json:"events"`
+	// PhysicalResources PhysicalResources `json:"physical_resources"`
+	// ReplicaStatus     []ReplicaInfo     `json:"replica_status"`
+}
+
+type ReplicaInfo struct {
+	Cluster string    `json:"cluster"`
+	Pods    []PodInfo `json:"pods"`
+}
+
+type PortInfo struct {
+	Name     string `json:"port_name"`
+	Port     string `json:"port"`
+	Protocol string `json:"protocol"`
 }
 
 type ServicesRes struct {
@@ -311,8 +333,8 @@ type VolumeInfo struct {
 	Status       string `json:"status"`
 	Capacity     string `json:"capacity"`
 	CreatedTime  string `json:"created_time"`
-	StorageClass string `json:"storage_class"`
-	AccessMode   string `json:"access_mode"`
+	StorageClass string `json:"storage_class,omitempty"`
+	AccessMode   string `json:"access_mode,omitempty"`
 }
 
 // VolumeOverview

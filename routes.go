@@ -110,6 +110,12 @@ var routes = Routes{
 		handler.GetDeploymentsInProject,
 	},
 	Route{
+		"deploymentOverview",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}",
+		handler.GetDeploymentOverview,
+	},
+	Route{
 		"dns",
 		"GET",
 		"/apis/dns",
@@ -150,12 +156,6 @@ var routes = Routes{
 		"/apis/clusters/{clusterName}/projects/{projectName}/ingress",
 		handler.GetIngressInProject,
 	},
-	Route{
-		"pod-overview",
-		"GET",
-		"/apis/pod/overview",
-		handler.PodOverview,
-	},
 
 	Route{
 		"ingressOverview",
@@ -169,6 +169,19 @@ var routes = Routes{
 		"GET",
 		"/apis/pods",
 		handler.GetPods,
+	},
+	Route{
+		"podOverview",
+		"GET",
+		"/apis/pods/{podName}",
+		handler.GetPodOverview,
+	},
+
+	Route{
+		"podPhysicalRes",
+		"GET",
+		"/apis/pods/{podName}/physicalResPerMin",
+		handler.GetPodPhysicalRes,
 	},
 
 	Route{

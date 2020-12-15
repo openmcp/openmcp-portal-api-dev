@@ -318,11 +318,16 @@ func GetPodsInProject(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resPod.Pods)
 }
 
-func PodOverview(w http.ResponseWriter, r *http.Request) {
-	clusterNm := r.URL.Query().Get("clustername")
-	podNm := r.URL.Query().Get("pod")
-	namespaceNm := r.URL.Query().Get("namespace")
-	if clusterNm == "" || podNm == "" || namespaceNm == "" {
+func GetPodOverview(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	clusterName := r.URL.Query().Get("cluster")
+	podName := vars["podName"]
+	// podName := r.URL.Query().Get("pod")
+	projectName := r.URL.Query().Get("project")
+
+	// fmt.Println("################", clusterName, podName, projectName)
+	if clusterName == "" || podName == "" || projectName == "" {
 		errorMSG := jsonErr{500, "failed", "need some params"}
 		json.NewEncoder(w).Encode(errorMSG)
 	} else {
@@ -330,7 +335,7 @@ func PodOverview(w http.ResponseWriter, r *http.Request) {
 		token := GetOpenMCPToken()
 		// http://192.168.0.152:31635/api/v1/namespaces/{namespace}/pods/{podname}?clustername={clustername}
 
-		podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + namespaceNm + "/pods/" + podNm + "?clustername=" + clusterNm
+		podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods/" + podName + "?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 
 		podResult := <-ch
@@ -392,7 +397,7 @@ func PodOverview(w http.ResponseWriter, r *http.Request) {
 			podBasicInfo := PodOverviewInfo{
 				podMetadata["name"].(string),
 				podStatus["phase"].(string),
-				clusterNm,
+				clusterName,
 				podMetadata["namespace"].(string),
 				podStatus["podIP"].(string),
 				podSpec["nodeName"].(string),
@@ -402,31 +407,56 @@ func PodOverview(w http.ResponseWriter, r *http.Request) {
 				podMetadata["creationTimestamp"].(string),
 			}
 
-			podMetric := GetInfluxPod10mMetric(clusterNm, namespaceNm, podNm)
+			podMetric := GetInfluxPod10mMetric(clusterName, projectName, podName)
 
 			// http://192.168.0.152:31635/api/v1/namespaces/{namespace}/events?clustername={clustername}
-			podEventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + namespaceNm + "/events?clustername=" + clusterNm
+			podEventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+
+			// go CallAPI(token, podEventURL, ch)
+
+			// eventsResult := <-ch
+			// eventsData := eventsResult.data
+			// eventsItems := eventsData["items"].([]interface{})
+			// var events []Event
+			// if eventsItems != nil {
+			// 	for _, element := range eventsItems {
+			// 		// project := element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+			// 		typeNm := element.(map[string]interface{})["type"].(string)
+			// 		reason := element.(map[string]interface{})["reason"].(string)
+			// 		objectKind := element.(map[string]interface{})["involvedObject"].(map[string]interface{})["kind"].(string)
+			// 		objectName := element.(map[string]interface{})["involvedObject"].(map[string]interface{})["name"].(string)
+			// 		message := element.(map[string]interface{})["message"].(string)
+			// 		time := "-"
+			// 		if element.(map[string]interface{})["lastTimestamp"] != nil {
+			// 			time = element.(map[string]interface{})["lastTimestamp"].(string)
+			// 		}
+
+			// 		if objectKind == "Pod" && objectName == podName {
+			// 			events = append(events, Event{"", typeNm, reason, "", message, time})
+			// 		}
+			// 	}
+			// }
+
 			go CallAPI(token, podEventURL, ch)
+			eventResult := <-ch
+			eventData := eventResult.data
+			eventItems := eventData["items"].([]interface{})
+			events := []Event{}
 
-			eventsResult := <-ch
-			eventsData := eventsResult.data
-			eventsItems := eventsData["items"].([]interface{})
-			var events []Event
-			if eventsItems != nil {
-				for _, element := range eventsItems {
-					// project := element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-					typeNm := element.(map[string]interface{})["type"].(string)
-					reason := element.(map[string]interface{})["reason"].(string)
-					objectKind := element.(map[string]interface{})["involvedObject"].(map[string]interface{})["kind"].(string)
-					objectName := element.(map[string]interface{})["involvedObject"].(map[string]interface{})["name"].(string)
-					message := element.(map[string]interface{})["message"].(string)
-					time := "-"
-					if element.(map[string]interface{})["lastTimestamp"] != nil {
-						time = element.(map[string]interface{})["lastTimestamp"].(string)
-					}
-
-					if objectKind == "Pod" && objectName == podNm {
-						events = append(events, Event{"", typeNm, reason, "", message, time})
+			if len(eventItems) > 0 {
+				event := Event{}
+				for _, element := range eventItems {
+					kind := GetStringElement(element, []string{"involvedObject", "kind"})
+					objectName := GetStringElement(element, []string{"involvedObject", "name"})
+					if kind == "Pod" && objectName == podName {
+						event.Typenm = GetStringElement(element, []string{"type"})
+						event.Reason = GetStringElement(element, []string{"reason"})
+						event.Message = GetStringElement(element, []string{"message"})
+						// event.Time = GetStringElement(element, []string{"metadata", "creationTimestamp"})
+						event.Time = GetStringElement(element, []string{"lastTimestamp"})
+						event.Object = kind
+						event.Project = projectName
+						events = append(events, event)
 					}
 				}
 			}
@@ -435,5 +465,21 @@ func PodOverview(w http.ResponseWriter, r *http.Request) {
 
 			json.NewEncoder(w).Encode(response)
 		}
+	}
+}
+
+func GetPodPhysicalRes(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	clusterName := r.URL.Query().Get("cluster")
+	podName := vars["podName"]
+	projectName := r.URL.Query().Get("project")
+
+	if clusterName == "" || podName == "" || projectName == "" {
+		errorMSG := jsonErr{500, "failed", "need some params"}
+		json.NewEncoder(w).Encode(errorMSG)
+	} else {
+		podMetric := GetInfluxPod10mMetric(clusterName, projectName, podName)
+		json.NewEncoder(w).Encode(podMetric)
 	}
 }

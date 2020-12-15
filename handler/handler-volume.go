@@ -47,7 +47,8 @@ func GetVolumes(w http.ResponseWriter, r *http.Request) {
 			volume.Status = status
 			volume.Capacity = capacity
 			volume.CreatedTime = createdTime
-
+			volume.StorageClass = ""
+			volume.AccessMode = ""
 			resVolume.Volumes = append(resVolume.Volumes, volume)
 		}
 	}
@@ -193,7 +194,8 @@ func GetVolumeOverview(w http.ResponseWriter, r *http.Request) {
 		event := Event{}
 		for _, element := range eventItems {
 			kind := GetStringElement(element, []string{"involvedObject", "kind"})
-			if kind == "Volume" {
+			objectName := GetStringElement(element, []string{"involvedObject", "name"})
+			if kind == "Volume" && objectName == volumeName {
 				event.Typenm = GetStringElement(element, []string{"type"})
 				event.Reason = GetStringElement(element, []string{"reason"})
 				event.Message = GetStringElement(element, []string{"message"})

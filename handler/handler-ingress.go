@@ -184,7 +184,8 @@ func GetIngressOverview(w http.ResponseWriter, r *http.Request) {
 		event := Event{}
 		for _, element := range eventItems {
 			kind := GetStringElement(element, []string{"involvedObject", "kind"})
-			if kind == "Ingress" {
+			objectName := GetStringElement(element, []string{"involvedObject", "name"})
+			if kind == "Ingress" && objectName == ingressName {
 				event.Typenm = GetStringElement(element, []string{"type"})
 				event.Reason = GetStringElement(element, []string{"reason"})
 				event.Message = GetStringElement(element, []string{"message"})
