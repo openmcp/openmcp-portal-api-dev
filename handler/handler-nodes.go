@@ -201,7 +201,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	clusterName := vars["clusterName"]
-	fmt.Println(clusterName)
+	// fmt.Println(clusterName)
 
 	resNode := NodeRes{}
 	node := NodeInfo{}

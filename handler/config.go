@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"fmt"
+
+	"github.com/influxdata/influxdb/client/v2"
 	"github.com/jinzhu/configor"
 )
 
@@ -19,3 +22,41 @@ func InitPortalConfig() string {
 
 var openmcpURL = InitPortalConfig()
 var kubeConfigFile = portalConfig.Portal.Kubeconfig
+
+var InfluxConfig = struct {
+	Influx struct {
+		Ip       string
+		Port     string
+		Username string
+		Password string
+	}
+}{}
+
+//Influx Configration
+func InitInfluxConfig() {
+	configor.Load(&InfluxConfig, "dbconfig.yml")
+}
+
+type Influx struct {
+	inClient client.Client
+}
+
+func NewInflux(INFLUX_IP, INFLUX_PORT, username, password string) *Influx {
+	inf := &Influx{
+		inClient: InfluxDBClient(INFLUX_IP, INFLUX_PORT, username, password),
+	}
+	return inf
+}
+
+func InfluxDBClient(INFLUX_IP, INFLUX_PORT, username, password string) client.Client {
+	c, err := client.NewHTTPClient(client.HTTPConfig{
+		Addr:     "http://" + INFLUX_IP + ":" + INFLUX_PORT,
+		Username: username,
+		Password: password,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	return c
+}
+//Influx Configration

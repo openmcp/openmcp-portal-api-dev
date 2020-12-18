@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -27,7 +26,7 @@ func GetConfigmaps(w http.ResponseWriter, r *http.Request) {
 	resConfigmap := ConfigmapRes{}
 	configMap := ConfigmapInfo{}
 	configMapURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps?clustername=" + clusterName
-	fmt.Println(configMapURL)
+	// fmt.Println(configMapURL)
 
 	go CallAPI(token, configMapURL, ch)
 
@@ -79,7 +78,7 @@ func GetConfigmapOverView(w http.ResponseWriter, r *http.Request) {
 	resConfigmapOverView := ConfigmapOverView{}
 	configMap := ConfigmapInfo{}
 	configMapURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps/" + configmapName + "?clustername=" + clusterName
-	fmt.Println(configMapURL)
+	// fmt.Println(configMapURL)
 
 	go CallAPI(token, configMapURL, ch)
 

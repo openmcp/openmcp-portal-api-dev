@@ -98,7 +98,7 @@ func GetDeploymentsInProject(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	fmt.Println("GetDeploymentsInProject")
+	// fmt.Println("GetDeploymentsInProject")
 
 	vars := mux.Vars(r)
 	clusterName := vars["clusterName"]
@@ -165,7 +165,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	fmt.Println("GetDeploymentsInProject")
+	// fmt.Println("GetDeploymentsInProject")
 
 	vars := mux.Vars(r)
 	clusterName := vars["clusterName"]
@@ -266,7 +266,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	podData := podResult.data
 	podItems := podData["items"].([]interface{})
 
-	fmt.Println("replUIDs : ", replUIDs)
+	// fmt.Println("replUIDs : ", replUIDs)
 	for _, element := range podItems {
 		kind := GetStringElement(element, []string{"metadata", "ownerReferences", "kind"})
 		if kind == "ReplicaSet" {

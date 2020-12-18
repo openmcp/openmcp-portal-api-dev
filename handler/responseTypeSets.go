@@ -74,6 +74,31 @@ type ProjectInfo struct {
 	Cluster     string                 `json:"cluster"`
 	CreatedTime string                 `json:"created_time"`
 	Labels      map[string]interface{} `json:"labels"`
+	UID         string                 `json:"uid"`
+}
+
+type ProjectOverview struct {
+	Info              ProjectInfo           `json:"basic_info"`
+	ProjectResource   []ProjectResourceType `json:"project_resource"`
+	UsageTop5         UsageTop5             `json:"usage_top5"`
+	PhysicalResources PhysicalResources     `json:"physical_resources"`
+}
+
+type ProjectResourceType struct {
+	Resource string `json:"resource"`
+	Total    string `json:"total"`
+	Abnormal string `json:"abnormal"`
+}
+
+type UsageTop5 struct {
+	CPU    []UsageType `json:"cpu"`
+	Memory []UsageType `json:"memory"`
+}
+
+type UsageType struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Usage string `json:"usage"`
 }
 
 type PodRes struct {
@@ -243,6 +268,13 @@ type NodeUsageTop5 struct {
 	CPU    PairList `json:"cpu"`
 	Memory PairList `json:"memory"`
 }
+
+type Pair struct {
+	Name  string  `json:"name"`
+	Usage float64 `json:"usage"`
+}
+
+type PairList []Pair
 
 type NameStatus struct {
 	Name   string `json:"name"`

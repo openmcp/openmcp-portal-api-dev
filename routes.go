@@ -98,6 +98,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"projectOverview",
+		"GET",
+		"/apis/clusters/{clusterName}/projects/{projectName}",
+		handler.GetProjectOverview,
+	},
+
+	Route{
 		"deployments",
 		"GET",
 		"/apis/deployments",

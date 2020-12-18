@@ -13,46 +13,9 @@ import (
 	"time"
 
 	"github.com/influxdata/influxdb/client/v2"
-	"github.com/jinzhu/configor"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
-
-var InfluxConfig = struct {
-	Influx struct {
-		Ip       string
-		Port     string
-		Username string
-		Password string
-	}
-}{}
-
-func InitInfluxConfig() {
-	configor.Load(&InfluxConfig, "dbconfig.yml")
-}
-
-type Influx struct {
-	inClient client.Client
-}
-
-func NewInflux(INFLUX_IP, INFLUX_PORT, username, password string) *Influx {
-	inf := &Influx{
-		inClient: InfluxDBClient(INFLUX_IP, INFLUX_PORT, username, password),
-	}
-	return inf
-}
-
-func InfluxDBClient(INFLUX_IP, INFLUX_PORT, username, password string) client.Client {
-	c, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr:     "http://" + INFLUX_IP + ":" + INFLUX_PORT,
-		Username: username,
-		Password: password,
-	})
-	if err != nil {
-		fmt.Println(err)
-	}
-	return c
-}
 
 type jsonErr struct {
 	Code   int    `json:"code"`
@@ -123,24 +86,6 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 
 }
 
-func PercentChange(child, mother float64) (result float64) {
-	// diff := float64(new - old)
-	result = (float64(child) / float64(mother)) * 100
-	return
-}
-
-func PercentUseString(child, mother string) (result string) {
-	c, _ := strconv.ParseFloat(child, 64)
-	m, _ := strconv.ParseFloat(mother, 64)
-
-	if m == 0 || c == 0 {
-		return "0.0"
-	}
-	res := (c / m) * 100
-	result = fmt.Sprintf("%.1f", res)
-	return
-}
-
 func NodeHealthCheck(condType string) string {
 	result := ""
 
@@ -188,7 +133,7 @@ func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) Phy
 
 	podMetricURL := "http://" + openmcpURL + "/metrics/namespaces/" + namespace + "/pods/" + pod + "?clustername=" + clusterName + "&timeStart=" + start + "&timeEnd=" + end
 
-	// fmt.Println(podMetricURL)
+	fmt.Println(podMetricURL)
 	go CallAPI(token, podMetricURL, ch)
 
 	podMetricResult := <-ch
@@ -305,6 +250,7 @@ func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) Phy
 		}
 		result := PhysicalResources{podCPUUsageMins, podMemoryUsageMins, podNetworkUsageMins}
 		return result
+
 	} else {
 
 		podCPUUsageMins = append(podCPUUsageMins, PodCPUUsageMin{float64(0), ""})
@@ -312,6 +258,155 @@ func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) Phy
 		podNetworkUsageMins = append(podNetworkUsageMins, PodNetworkUsageMin{"Bps", 0, 0, ""})
 		return PhysicalResources{podCPUUsageMins, podMemoryUsageMins, podNetworkUsageMins}
 	}
+}
+
+func GetInfluxDBPod10mMetric(clusterName string, projectName string) PhysicalResources {
+
+	var podCPUUsageMins []PodCPUUsageMin
+	var podMemoryUsageMins []PodMemoryUsageMin
+	var podNetworkUsageMins []PodNetworkUsageMin
+
+	InitInfluxConfig()
+	inf := NewInflux(InfluxConfig.Influx.Ip, InfluxConfig.Influx.Port, InfluxConfig.Influx.Username, InfluxConfig.Influx.Username)
+
+	nowTime := time.Now().UTC() //.Add(time.Duration(offset) * time.Second)
+	endTime := nowTime
+	startTime := nowTime.Add(time.Duration(-12) * time.Minute)
+	start := startTime.Format("2006-01-02T15:04") + ":00.0Z"
+	end := endTime.Format("2006-01-02T15:04") + ":00.0Z"
+	// start = "2020-12-16T10:21:00.0Z"
+	// end = "2020-12-16T10:32:00.0Z"
+
+	q := client.Query{}
+	// t := time.Now().Format(time.RFC3339)
+	// select time, CPUUsageNanoCores as cpuUsage, MemoryUsageBytes as memoryUsage, NetworkRxBytes as Rx, NetworkTxBytes as Tx, pod  from Pods where time < '2020-12-16T10:31:00.0Z' and time > '2020-12-16T10:21:00.0Z' and cluster='cluster2' and namespace='ingress-nginx'
+	query := "select time, CPUUsageNanoCores as cpuUsage, MemoryUsageBytes as memoryUsage, NetworkRxBytes as Rx, NetworkTxBytes as Tx, pod from Pods where time < '" + end + "' and time > '" + start + "' and cluster='" + clusterName + "' and namespace='" + projectName + "' order by time asc"
+
+	// fmt.Println(query)
+
+	q = client.NewQuery(query, "Metrics", "")
+	response, _ := inf.inClient.Query(q)
+
+	// var queryResult []client.Result
+	queryResult := response.Results[0]
+
+	if len(queryResult.Series) == 0 {
+		podCPUUsageMins = append(podCPUUsageMins, PodCPUUsageMin{math.Ceil(0), ""})
+		podMemoryUsageMins = append(podMemoryUsageMins, PodMemoryUsageMin{math.Ceil(0), ""})
+		podNetworkUsageMins = append(podNetworkUsageMins, PodNetworkUsageMin{"Bps", 0, 0, ""})
+		result := PhysicalResources{podCPUUsageMins, podMemoryUsageMins, podNetworkUsageMins}
+		return result
+	}
+
+	ser := queryResult.Series[0]
+	_, offset := time.Now().Zone()
+
+	type NtUsage struct {
+		RxAvg float64 `json:"rx_avg"`
+		TxAvg float64 `json:"tx_avg"`
+		RxMin float64 `json:"rx_min"`
+		TxMin float64 `json:"tx_min"`
+	}
+
+	type PodNt map[string]*NtUsage
+
+	type ResourceInfo struct {
+		Count  float64 `json:"count"`
+		CPU    float64 `json:"cpu"`
+		Memory float64 `json:"memory"`
+		NtRx   float64 `json:"ntRx"`
+		NtTx   float64 `json:"ntTx"`
+		Pod    PodNt   `json:"pod_nt"`
+	}
+
+	type MetricByMin map[string]*ResourceInfo
+
+	metrics := make(MetricByMin)
+	preTimeHM := ""
+	podlist := []string{}
+	for i, value := range ser.Values {
+		// 	[
+		// 		"2020-12-16T04:22:02.112243605Z", [0][0]
+		// 		"1177304n",  [0][1] cpuUsage
+		// 		"170028Ki",  [0][2] memoryUsage
+		// 		"926886456", [0][3] Rx
+		// 		"279574980"  [0][4] Tx
+		//		"pods-1"		 [0][5] pod
+		//  ],
+		// value := ser.Values[r][c].(string)
+		timeValue := value[0].(string)
+		ind := strings.Index(timeValue, ":")
+		timeHM := timeValue[ind-2 : ind+3]
+		timeHM = timeHM + ":00"
+		t1, _ := time.Parse("15:04:05", timeHM)
+		t1 = t1.Add(time.Duration(offset) * time.Second)
+
+		timeHM = t1.Format("15:04:05")
+		cpuValue, _ := strconv.ParseFloat(strings.Split(value[1].(string), "n")[0], 64)
+		memValue, _ := strconv.ParseFloat(strings.Split(value[2].(string), "Ki")[0], 64)
+		rxValue, _ := strconv.ParseFloat(value[3].(string), 64)
+		txValue, _ := strconv.ParseFloat(value[4].(string), 64)
+		podName, _ := value[5].(string)
+
+		if i == 0 {
+			preTimeHM = timeHM
+			metrics[timeHM] = &ResourceInfo{}
+			metrics[timeHM].Pod = make(PodNt)
+		} else if timeHM != preTimeHM || len(ser.Values)-1 == i {
+			metrics[preTimeHM].CPU = metrics[preTimeHM].CPU / metrics[preTimeHM].Count / 1000 / 1000 / 1000
+			metrics[preTimeHM].Memory = metrics[preTimeHM].Memory / metrics[preTimeHM].Count / 1000
+
+			for _, pod := range podlist {
+				metrics[preTimeHM].NtRx += metrics[preTimeHM].Pod[pod].RxAvg / float64(len(podlist))
+				metrics[preTimeHM].NtTx += metrics[preTimeHM].Pod[pod].TxAvg / float64(len(podlist))
+			}
+
+			metrics[timeHM] = &ResourceInfo{}
+			metrics[timeHM].Pod = make(PodNt)
+			preTimeHM = timeHM
+			podlist = []string{}
+		}
+
+		metrics[timeHM].CPU = metrics[timeHM].CPU + cpuValue
+		metrics[timeHM].Memory = metrics[timeHM].Memory + memValue
+
+		if FindInStrArr(podlist, podName) {
+			metrics[timeHM].Pod[podName].RxAvg = (rxValue - metrics[timeHM].Pod[podName].RxMin) / 60
+			metrics[timeHM].Pod[podName].TxAvg = (txValue - metrics[timeHM].Pod[podName].TxMin) / 60
+		} else {
+			podlist = append(podlist, podName)
+			metrics[timeHM].Pod[podName] = &NtUsage{}
+			metrics[timeHM].Pod[podName].RxMin = rxValue
+			metrics[timeHM].Pod[podName].TxMin = txValue
+		}
+
+		metrics[timeHM].Count++
+	}
+
+	for key, element := range metrics {
+		podCPUUsageMins = append(podCPUUsageMins, PodCPUUsageMin{math.Ceil(element.CPU*1000) / 1000, key})
+		podMemoryUsageMins = append(podMemoryUsageMins, PodMemoryUsageMin{math.Ceil(element.Memory*1000) / 1000, key})
+		podNetworkUsageMins = append(podNetworkUsageMins, PodNetworkUsageMin{"Bps", int(element.NtRx), int(element.NtTx), key})
+	}
+
+	sort.Slice(podCPUUsageMins, func(i, j int) bool {
+		return podCPUUsageMins[i].Time < podCPUUsageMins[j].Time
+	})
+	sort.Slice(podMemoryUsageMins, func(i, j int) bool {
+		return podMemoryUsageMins[i].Time < podMemoryUsageMins[j].Time
+	})
+	sort.Slice(podNetworkUsageMins, func(i, j int) bool {
+		return podNetworkUsageMins[i].Time < podNetworkUsageMins[j].Time
+	})
+
+	if len(podCPUUsageMins) > 10 {
+		podCPUUsageMins = podCPUUsageMins[1 : len(podCPUUsageMins)-1]
+		podMemoryUsageMins = podMemoryUsageMins[1 : len(podCPUUsageMins)-1]
+		podNetworkUsageMins = podNetworkUsageMins[1 : len(podCPUUsageMins)-1]
+	}
+
+	result := PhysicalResources{podCPUUsageMins, podMemoryUsageMins, podNetworkUsageMins}
+	return result
 }
 
 func reverseRank(data map[string]float64, top int) PairList {
@@ -329,13 +424,6 @@ func reverseRank(data map[string]float64, top int) PairList {
 	return pl[:top]
 }
 
-type Pair struct {
-	Name  string  `json:"name"`
-	Usage float64 `json:"usage"`
-}
-
-type PairList []Pair
-
 func (p PairList) Len() int           { return len(p) }
 func (p PairList) Less(i, j int) bool { return p[i].Usage < p[j].Usage }
 func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
@@ -346,10 +434,6 @@ func buildConfigFromFlags(context, kubeconfigPath string) (*rest.Config, error) 
 		&clientcmd.ConfigOverrides{
 			CurrentContext: context,
 		}).ClientConfig()
-}
-
-func Round(x, unit float64) float64 {
-	return math.Round(x/unit) * unit
 }
 
 func GetStringElement(nMap interface{}, keys []string) string {

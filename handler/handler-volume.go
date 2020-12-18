@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -68,7 +67,7 @@ func GetVolumeOverview(w http.ResponseWriter, r *http.Request) {
 	volume := VolumeInfo{}
 	volumeURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/persistentvolumeclaims/" + volumeName + "?clustername=" + clusterName
 
-	fmt.Println(volumeURL)
+	// fmt.Println(volumeURL)
 	go CallAPI(token, volumeURL, ch)
 
 	volumeResult := <-ch

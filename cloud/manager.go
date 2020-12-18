@@ -113,7 +113,7 @@ func GetNodeState(instanceId *string, nodenm string, cluster string, aKey string
 				if status == "running" {
 					publicIPAddress = *result.Reservations[0].Instances[0].PublicIpAddress
 					db.InsertReadyNode(cluster, nodenm, publicIPAddress, status, provider)
-					fmt.Println("break")
+					// fmt.Println("break")
 					break
 				} else {
 					publicIPAddress = ""
