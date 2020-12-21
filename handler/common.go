@@ -133,7 +133,6 @@ func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) Phy
 
 	podMetricURL := "http://" + openmcpURL + "/metrics/namespaces/" + namespace + "/pods/" + pod + "?clustername=" + clusterName + "&timeStart=" + start + "&timeEnd=" + end
 
-	fmt.Println(podMetricURL)
 	go CallAPI(token, podMetricURL, ch)
 
 	podMetricResult := <-ch
@@ -420,11 +419,9 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 
 	query := "select time, last(CPUUsageNanoCores) as cpuUsage, MemoryUsageBytes as memoryUsage, namespace, cluster, pod  from Pods where cluster='" + clusterName + "' and namespace='" + projectName + "' group by pod"
 
-	fmt.Println(query)
 	q = client.NewQuery(query, "Metrics", "")
 	response, _ := inf.inClient.Query(q)
 
-	fmt.Println("response.Results", response.Results)
 	// var queryResult []client.Result
 	queryResult := response.Results
 
@@ -456,7 +453,6 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 		}
 	}
 
-	fmt.Println("usageTop5", len(usageTop5.CPU))
 	sort.Slice(usageTop5.CPU, func(i, j int) bool {
 		return usageTop5.CPU[i].Usage > usageTop5.CPU[j].Usage
 	})
