@@ -409,6 +409,73 @@ func GetInfluxDBPod10mMetric(clusterName string, projectName string) PhysicalRes
 	return result
 }
 
+func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
+
+	var usageTop5 UsageTop5
+
+	InitInfluxConfig()
+	inf := NewInflux(InfluxConfig.Influx.Ip, InfluxConfig.Influx.Port, InfluxConfig.Influx.Username, InfluxConfig.Influx.Username)
+
+	q := client.Query{}
+
+	query := "select time, last(CPUUsageNanoCores) as cpuUsage, MemoryUsageBytes as memoryUsage, namespace, cluster, pod  from Pods where cluster='" + clusterName + "' and namespace='" + projectName + "' group by pod"
+
+	fmt.Println(query)
+	q = client.NewQuery(query, "Metrics", "")
+	response, _ := inf.inClient.Query(q)
+
+	fmt.Println("response.Results", response.Results)
+	// var queryResult []client.Result
+	queryResult := response.Results
+
+	if len(queryResult[0].Series) == 0 {
+		usageTop5.CPU = []UsageType{}
+		usageTop5.Memory = []UsageType{}
+
+		result := usageTop5
+		return result
+	}
+
+	for _, qRes := range queryResult {
+		for _, ser := range qRes.Series {
+			for _, value := range ser.Values {
+				cpuUsage := UsageType{}
+				memUsage := UsageType{}
+				podName := ser.Tags["pod"]
+				cpuUsage.Name = podName
+				// cpuUsage.Type = podName
+				cpuUsage.Usage = strings.Split(value[1].(string), "n")[0]
+
+				memUsage.Name = podName
+				// memUsage.Type = podName
+				memUsage.Usage = strings.Split(value[2].(string), "Ki")[0]
+
+				usageTop5.CPU = append(usageTop5.CPU, cpuUsage)
+				usageTop5.Memory = append(usageTop5.Memory, memUsage)
+			}
+		}
+	}
+
+	fmt.Println("usageTop5", len(usageTop5.CPU))
+	sort.Slice(usageTop5.CPU, func(i, j int) bool {
+		return usageTop5.CPU[i].Usage > usageTop5.CPU[j].Usage
+	})
+	sort.Slice(usageTop5.Memory, func(i, j int) bool {
+		return usageTop5.Memory[i].Usage > usageTop5.Memory[j].Usage
+	})
+
+	if len(usageTop5.CPU) > 5 {
+		usageTop5.CPU = usageTop5.CPU[0:5]
+	}
+
+	if len(usageTop5.Memory) > 5 {
+		usageTop5.Memory = usageTop5.Memory[0:5]
+	}
+
+	result := usageTop5
+	return result
+}
+
 func reverseRank(data map[string]float64, top int) PairList {
 	pl := make(PairList, len(data))
 

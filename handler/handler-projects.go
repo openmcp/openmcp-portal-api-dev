@@ -113,15 +113,109 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	// Project Resources
 	// Pods, Deployments, StatefulSets, DaemonSets, Jobs (count, UnhealthyCount)
+	// 1.pod //////////////////////////////////////////////////////////
+	podResources := ProjectResourceType{}
+	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	go CallAPI(token, podURL, ch)
+	podResult := <-ch
+	podData := podResult.data
+	podItems := podData["items"].([]interface{})
+	for _, element := range podItems {
+		//Pending, Running, Succeeded, Failed, Unknown
+		status := GetStringElement(element, []string{"status", "phase"})
+		if status != "Running" || status != "Succeeded" {
+			podResources.Abnormal++
+		}
+	}
+	podResources.Name = "Pods"
+	podResources.Total = len(podItems)
+	resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, podResources)
 
-	// resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, )
+	// 2.deployments //////////////////////////////////////////////////////////
+	deploymentResources := ProjectResourceType{}
+	deploymentURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	go CallAPI(token, deploymentURL, ch)
+	deploymentResult := <-ch
+	deploymentData := deploymentResult.data
+	deploymentItems := deploymentData["items"].([]interface{})
+
+	for _, element := range deploymentItems {
+		unavailableReplicas := GetInterfaceElement(element, []string{"status", "unavailableReplicas"})
+
+		if unavailableReplicas != nil && unavailableReplicas.(float64) > 0 {
+			deploymentResources.Abnormal++
+		}
+	}
+	deploymentResources.Name = "Deployments"
+	deploymentResources.Total = len(deploymentItems)
+	resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, deploymentResources)
+
+	// 3.StatefulSets //////////////////////////////////////////////////////////
+	stateFulSetResources := ProjectResourceType{}
+	stateFulSetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets?clustername=" + clusterName
+	go CallAPI(token, stateFulSetURL, ch)
+	stateFulSetResult := <-ch
+	stateFulSetData := stateFulSetResult.data
+	stateFulSetItems := stateFulSetData["items"].([]interface{})
+
+	for _, element := range stateFulSetItems {
+		replicas := GetIntElement(element, []string{"status", "replicas"})
+		readyReplicas := GetIntElement(element, []string{"status", "readyReplicas"})
+
+		abnormals := replicas - readyReplicas
+
+		if replicas > readyReplicas || abnormals > 0 {
+			stateFulSetResources.Abnormal++
+		}
+	}
+	stateFulSetResources.Name = "StatefulSets"
+	stateFulSetResources.Total = len(stateFulSetItems)
+	resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, stateFulSetResources)
+
+	// 4.DaemonSets //////////////////////////////////////////////////////////
+	daemonSetResources := ProjectResourceType{}
+	daemonSetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	go CallAPI(token, daemonSetURL, ch)
+	daemonSetResult := <-ch
+	daemonSetData := daemonSetResult.data
+	daemonSetItems := daemonSetData["items"].([]interface{})
+
+	for _, element := range daemonSetItems {
+		numberUnavailable := GetInterfaceElement(element, []string{"status", "numberUnavailable"})
+		if numberUnavailable != nil && numberUnavailable.(int) > 0 {
+			daemonSetResources.Abnormal++
+		}
+	}
+	daemonSetResources.Name = "DaemonSets"
+	daemonSetResources.Total = len(daemonSetItems)
+	resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, daemonSetResources)
+
+	// 5.Jobs //////////////////////////////////////////////////////////
+	jobResources := ProjectResourceType{}
+	jobURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	go CallAPI(token, jobURL, ch)
+	jobResult := <-ch
+	jobData := jobResult.data
+	jobItems := jobData["items"].([]interface{})
+
+	for _, element := range jobItems {
+		//Complete, Failed
+		statusType := GetStringElement(element, []string{"status", "type"})
+		if statusType == "Failed" {
+			jobResources.Abnormal++
+		}
+	}
+	jobResources.Name = "Jobs"
+	jobResources.Total = len(jobItems)
+	resProjectOverview.ProjectResource = append(resProjectOverview.ProjectResource, jobResources)
 
 	// Usage Top5
 	// workload (Deployment, Replicaset, statefulSet, DemonSet, Job, CronJob)
-	// resProjectOverview.UsageTop5 = results
+	usageResult := GetInfluxPodTop5(clusterName, projectName)
+	resProjectOverview.UsageTop5 = usageResult
 
 	results := GetInfluxDBPod10mMetric(clusterName, projectName)
 	resProjectOverview.PhysicalResources = results
 
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(resProjectOverview)
 }

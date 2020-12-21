@@ -85,9 +85,9 @@ type ProjectOverview struct {
 }
 
 type ProjectResourceType struct {
-	Resource string `json:"resource"`
-	Total    string `json:"total"`
-	Abnormal string `json:"abnormal"`
+	Name     string `json:"resource"`
+	Total    int    `json:"total"`
+	Abnormal int    `json:"abnormal"`
 }
 
 type UsageTop5 struct {
@@ -96,8 +96,8 @@ type UsageTop5 struct {
 }
 
 type UsageType struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
+	Name string `json:"name"`
+	// Type  string `json:"type"`
 	Usage string `json:"usage"`
 }
 

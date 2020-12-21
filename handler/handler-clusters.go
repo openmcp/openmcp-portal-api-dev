@@ -292,6 +292,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			cpuUsage  int
 			memUsage  int
 		}
+
 		namspaceUsage := make(map[string]podUsage)
 		cpuSum := make(map[string]int)
 		memSum := make(map[string]int)

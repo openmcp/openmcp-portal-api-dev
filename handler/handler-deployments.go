@@ -126,14 +126,16 @@ func GetDeploymentsInProject(w http.ResponseWriter, r *http.Request) {
 		availableReplicas := GetInterfaceElement(element, []string{"status", "availableReplicas"})
 		// element.(map[string]interface{})["status"].(map[string]interface{})["availableReplicas"]
 		readyReplicas := GetInterfaceElement(element, []string{"status", "readyReplicas"})
+
 		// element.(map[string]interface{})["status"].(map[string]interface{})["readyReplicas"]
+
 		replicas := GetFloat64Element(element, []string{"status", "replicas"})
 		// element.(map[string]interface{})["status"].(map[string]interface{})["replicas"].(float64)
 
 		replS := fmt.Sprintf("%.0f", replicas)
 
 		if readyReplicas != nil {
-			readyReplS := fmt.Sprintf("%.0f", readyReplicas)
+			readyReplS := fmt.Sprintf("%.0f", readyReplicas.(float64))
 			status = readyReplS + "/" + replS
 		} else if availableReplicas == nil {
 			status = "0/" + replS
