@@ -160,6 +160,30 @@ type DeploymentOverview struct {
 	// ReplicaStatus     []ReplicaInfo     `json:"replica_status"`
 }
 
+type StatefulsetRes struct {
+	Statefulsets []StatefulsetInfo `json:"statefulsets"`
+}
+
+type StatefulsetInfo struct {
+	Name        string                 `json:"name"`
+	Status      string                 `json:"status,omitempty"`
+	Cluster     string                 `json:"cluster,omitempty"`
+	Project     string                 `json:"project"`
+	Image       string                 `json:"image,omitempty"`
+	CreatedTime string                 `json:"created_time"`
+	Uid         string                 `json:"uid,omitempty"`
+	Labels      map[string]interface{} `json:"labels"`
+}
+
+type StatefulsetOverview struct {
+	Info   StatefulsetInfo `json:"basic_info"`
+	Pods   []PodInfo       `json:"pods"`
+	Ports  []PortInfo      `json:"ports"`
+	Events []Event         `json:"events"`
+	// PhysicalResources PhysicalResources `json:"physical_resources"`
+	// ReplicaStatus     []ReplicaInfo     `json:"replica_status"`
+}
+
 type ReplicaInfo struct {
 	Cluster string    `json:"cluster"`
 	Pods    []PodInfo `json:"pods"`

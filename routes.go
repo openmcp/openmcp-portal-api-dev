@@ -122,6 +122,26 @@ var routes = Routes{
 		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}",
 		handler.GetDeploymentOverview,
 	},
+
+	Route{
+		"statefulsets",
+		"GET",
+		"/apis/statefulsets",
+		handler.GetStatefulsets,
+	},
+	Route{
+		"statefulsetsInProject",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/statefulsets",
+		handler.GetStatefulsetsInProject,
+	},
+	Route{
+		"statefulsetOverview",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/statefulsets/{statefulsetName}",
+		handler.GetStatefulsetOverview,
+	},
+
 	Route{
 		"dns",
 		"GET",

@@ -413,16 +413,18 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 	var usageTop5 UsageTop5
 
 	InitInfluxConfig()
-	inf := NewInflux(InfluxConfig.Influx.Ip, InfluxConfig.Influx.Port, InfluxConfig.Influx.Username, InfluxConfig.Influx.Username)
+	inf := NewInflux(InfluxConfig.Influx.Ip, InfluxConfig.Influx.Port, InfluxConfig.Influx.Username, InfluxConfig.Influx.Password)
 
 	q := client.Query{}
 
 	query := "select time, last(CPUUsageNanoCores) as cpuUsage, MemoryUsageBytes as memoryUsage, namespace, cluster, pod  from Pods where cluster='" + clusterName + "' and namespace='" + projectName + "' group by pod"
 
+	fmt.Println(query)
 	q = client.NewQuery(query, "Metrics", "")
 	response, _ := inf.inClient.Query(q)
 
 	// var queryResult []client.Result
+	fmt.Println(response)
 	queryResult := response.Results
 
 	if len(queryResult[0].Series) == 0 {

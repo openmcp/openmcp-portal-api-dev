@@ -159,8 +159,8 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 	stateFulSetItems := stateFulSetData["items"].([]interface{})
 
 	for _, element := range stateFulSetItems {
-		replicas := GetIntElement(element, []string{"status", "replicas"})
-		readyReplicas := GetIntElement(element, []string{"status", "readyReplicas"})
+		replicas := GetFloat64Element(element, []string{"status", "replicas"})
+		readyReplicas := GetFloat64Element(element, []string{"status", "readyReplicas"})
 
 		abnormals := replicas - readyReplicas
 

@@ -345,11 +345,14 @@ func GetPodOverview(w http.ResponseWriter, r *http.Request) {
 			podMetadata := podData["metadata"].(map[string]interface{})
 			podSpec := podData["spec"].(map[string]interface{})
 			podStatus := podData["status"].(map[string]interface{})
+			podPhase := podStatus["phase"].(string)
 			totalRestartCount := 0
 			var containers []PodOverviewContainer
-			for _, element := range podStatus["containerStatuses"].([]interface{}) {
-				restartCount := int(element.(map[string]interface{})["restartCount"].(float64))
-				totalRestartCount = totalRestartCount + restartCount
+			if podStatus["containerStatuses"] != nil {
+				for _, element := range podStatus["containerStatuses"].([]interface{}) {
+					restartCount := int(element.(map[string]interface{})["restartCount"].(float64))
+					totalRestartCount = totalRestartCount + restartCount
+				}
 			}
 			for _, element := range podSpec["containers"].([]interface{}) {
 				containerNm := element.(map[string]interface{})["name"].(string)
@@ -362,14 +365,16 @@ func GetPodOverview(w http.ResponseWriter, r *http.Request) {
 					containerPort = "-"
 				}
 				restartCount := 0
-				state := ""
-				for _, contStatus := range podStatus["containerStatuses"].([]interface{}) {
-					if contStatus.(map[string]interface{})["name"].(string) == containerNm {
-						restartCount = int(contStatus.(map[string]interface{})["restartCount"].(float64))
-						for k := range contStatus.(map[string]interface{})["state"].(map[string]interface{}) {
-							state = k
+				state := "-"
+				if podStatus["containerStatuses"] != nil {
+					for _, contStatus := range podStatus["containerStatuses"].([]interface{}) {
+						if contStatus.(map[string]interface{})["name"].(string) == containerNm {
+							restartCount = int(contStatus.(map[string]interface{})["restartCount"].(float64))
+							for k := range contStatus.(map[string]interface{})["state"].(map[string]interface{}) {
+								state = k
+							}
+							break
 						}
-						break
 					}
 				}
 				container := PodOverviewContainer{containerNm, state, restartCount, containerPort, containerImgae}
@@ -394,14 +399,22 @@ func GetPodOverview(w http.ResponseWriter, r *http.Request) {
 				podConditons = append(podConditons, PodOverviewStatus{conType, status, updateTime, reason, message})
 			}
 
+			podHostIP := "-"
+			podIP := "-"
+			nodeName := "-"
+			if podPhase != "Pending" {
+				podHostIP = podStatus["hostIP"].(string)
+				podIP = podStatus["podIP"].(string)
+				nodeName = podSpec["nodeName"].(string)
+			}
 			podBasicInfo := PodOverviewInfo{
 				podMetadata["name"].(string),
-				podStatus["phase"].(string),
+				podPhase,
 				clusterName,
 				podMetadata["namespace"].(string),
-				podStatus["podIP"].(string),
-				podSpec["nodeName"].(string),
-				podStatus["hostIP"].(string),
+				podIP,
+				nodeName,
+				podHostIP,
 				podMetadata["namespace"].(string),
 				strconv.Itoa(totalRestartCount),
 				podMetadata["creationTimestamp"].(string),
