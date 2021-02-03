@@ -41,3 +41,17 @@ type DashboardRes struct {
 	} `json:"projects"`
 	Regions []Region `json:"regions"`
 }
+
+type ManagedCluster struct {
+	Name               string      `json:"name"`
+	ResourceGroup      string      `json:"resourcegroup"`
+	NodeResourceGrouop string      `json:"noderesourcegroup"`
+	AgentPool          []AgentPool `json:"agentpools"`
+	Location           string      `json:"location"`
+	// VmssNames          []string `json:"vmssnames"`
+}
+
+type AgentPool struct {
+	Name     string `json:"name"`
+	VmssName string `json:"vmssname"`
+}

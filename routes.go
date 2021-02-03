@@ -16,6 +16,36 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"getaksvm",
+		"GET",
+		"/apis/getaksvm",
+		getAKSVM,
+	},
+	Route{
+		"akschangevmss",
+		"GET",
+		"/apis/akschangevmss",
+		AKSChangeVMSS,
+	},
+	Route{
+		"aksgetallres",
+		"GET",
+		"/apis/aksgetallres",
+		AKSGetAllResources,
+	},
+	Route{
+		"aksnodepower",
+		"GET",
+		"/apis/aksnodepower",
+		AKSNodePower,
+	},
+	Route{
+		"addaksnode",
+		"GET",
+		"/apis/addaksnode",
+		AddAKSnode,
+	},
+	Route{
 		"yamlapply",
 		"POST",
 		"/apis/yamlapply",

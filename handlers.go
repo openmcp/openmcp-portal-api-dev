@@ -1,16 +1,25 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"portal-api-server/cloud"
 	"portal-api-server/handler"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/eks"
+
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/adal"
+	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/Azure/go-autorest/autorest/to"
 )
 
 var openmcpURL = handler.InitPortalConfig()
@@ -37,7 +46,299 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 		msg := jsonErr{200, "success", "Migration Created"}
 		json.NewEncoder(w).Encode(msg)
 	}
+}
 
+func getAKSVM(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	clientID := "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
+	clientSec := "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
+	tenantID := "bc231a1b-ab45-4865-bdba-7724c2893f1c"
+	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+
+	authBaseURL := azure.PublicCloud.ActiveDirectoryEndpoint
+	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
+	oauthConfig, err := adal.NewOAuthConfig(authBaseURL, tenantID)
+
+	token, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSec, resourceURL)
+	if err != nil {
+		fmt.Println("tokenError")
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(err)
+	}
+
+	authorizer := autorest.NewBearerAuthorizer(token)
+	ctx := context.Background()
+
+	aksClient := containerservice.NewManagedClustersClientWithBaseURI(resourceURL, subID)
+	aksClient.Authorizer = authorizer
+	vmssClient := compute.NewVirtualMachineScaleSetsClientWithBaseURI(resourceURL, subID)
+	vmssClient.Authorizer = authorizer
+
+	var lists []ManagedCluster
+
+	for list, err := aksClient.ListComplete(ctx); list.NotDone(); err = list.Next() {
+		if err != nil {
+			fmt.Println("got error while traverising Cluster list: ", err)
+		}
+		clusters := list.Value()
+
+		aPools := *clusters.AgentPoolProfiles
+		ap := make(map[string]AgentPool)
+
+		var poolNames []string
+		for _, pool := range aPools {
+			poolName := *pool.Name
+			poolNames = append(poolNames, poolName)
+			ap[poolName] = AgentPool{poolName, ""}
+		}
+
+		lis := strings.Split(*clusters.ID, "/")
+		rgNum := 4
+		for index, s := range lis {
+			if s == "resourcegroups" {
+				rgNum = index + 1
+			}
+		}
+		rg := lis[rgNum]
+		nodeRG := *clusters.NodeResourceGroup
+		var aplist []AgentPool
+		for list, err := vmssClient.ListComplete(ctx, nodeRG); list.NotDone(); err = list.Next() {
+			if err != nil {
+				fmt.Println("got error while traverising vms list: ", err)
+			}
+			i := list.Value()
+			// fmt.Println(*i.Name)
+			poolName := ap[*i.Tags["poolName"]].Name
+			vmssName := *i.Name
+			aplist = append(aplist, AgentPool{poolName, vmssName})
+		}
+		lists = append(lists, ManagedCluster{*clusters.Name, rg, nodeRG, aplist, *clusters.Location})
+	}
+	json.NewEncoder(w).Encode(lists)
+}
+
+func AKSNodePower(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	clientID := "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
+	clientSec := "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
+	tenantID := "bc231a1b-ab45-4865-bdba-7724c2893f1c"
+	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// rg := "kube-test-2"
+	nodeRG := "MC_kube-test-2_azure-cluster-2_japanwest"
+	// targetAgentPoolName := "agentpool2"
+	// vmName := "aks-agentpool2-39640967-vmss_0"
+
+	authBaseURL := azure.PublicCloud.ActiveDirectoryEndpoint
+	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
+	oauthConfig, err := adal.NewOAuthConfig(authBaseURL, tenantID)
+
+	token, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSec, resourceURL)
+	if err != nil {
+		fmt.Println("tokenError")
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(err)
+	}
+
+	authorizer := autorest.NewBearerAuthorizer(token)
+
+	aksClient := compute.NewVirtualMachineScaleSetsClientWithBaseURI(resourceURL, subID)
+	aksClient.Authorizer = authorizer
+	ctx := context.Background()
+	var vmssNames []string
+
+	for list, err := aksClient.ListComplete(ctx, nodeRG); list.NotDone(); err = list.Next() {
+		if err != nil {
+			fmt.Println("got error while traverising vms list: ", err)
+		}
+		i := list.Value()
+
+		vmssNames = append(vmssNames, *i.Name)
+		fmt.Println(*i.Name)
+	}
+
+	vmsClient := compute.NewVirtualMachineScaleSetVMsClientWithBaseURI(resourceURL, subID)
+	vmsClient.Authorizer = authorizer
+
+	for list, err := vmsClient.ListComplete(ctx, nodeRG, vmssNames[1], "", "", ""); list.NotDone(); err = list.Next() {
+		if err != nil {
+			fmt.Println("got error while traverising vms list: ", err)
+		}
+
+		i := list.Value()
+
+		fmt.Println(*i.Name, *i.ID)
+		progress, err := vmsClient.PowerOff(ctx, nodeRG, vmssNames[1], *i.InstanceID, nil)
+		if err != nil {
+			json.NewEncoder(w).Encode(err)
+		}
+		json.NewEncoder(w).Encode(progress)
+	}
+
+	// json.NewEncoder(w).Encode(aa)
+}
+
+func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	clientID := "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
+	clientSec := "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
+	tenantID := "bc231a1b-ab45-4865-bdba-7724c2893f1c"
+	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// rg := "kube-test-2"
+	nodeRG := "MC_kube-test-2_azure-cluster-2_japanwest"
+	// targetAgentPoolName := "agentpool2"
+	// vmName := "aks-agentpool2-39640967-vmss_0"
+
+	authBaseURL := azure.PublicCloud.ActiveDirectoryEndpoint
+	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
+	oauthConfig, err := adal.NewOAuthConfig(authBaseURL, tenantID)
+
+	token, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSec, resourceURL)
+	if err != nil {
+		fmt.Println("tokenError")
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(err)
+	}
+
+	authorizer := autorest.NewBearerAuthorizer(token)
+
+	aksClient := compute.NewVirtualMachineScaleSetsClientWithBaseURI(resourceURL, subID)
+	aksClient.Authorizer = authorizer
+	ctx := context.Background()
+	var vmssNames []string
+	var locations []string
+	var skuCapas []int64
+	for list, err := aksClient.ListComplete(ctx, nodeRG); list.NotDone(); err = list.Next() {
+		if err != nil {
+			fmt.Println("got error while traverising vms list: ", err)
+		}
+		i := list.Value()
+
+		vmssNames = append(vmssNames, *i.Name)
+		locations = append(locations, *i.Location)
+		skuCapas = append(skuCapas, *i.Sku.Capacity)
+		fmt.Println(*i.Name)
+	}
+	// // get available Skus
+	// for _, vmss := range vmssNames {
+	// 	skus, err := aksClient.ListSkus(ctx, nodeRG, vmss)
+	// 	if err != nil {
+	// 		json.NewEncoder(w).Encode(err)
+	// 	}
+	// 	json.NewEncoder(w).Encode(skus.Values())
+	// }
+	skuTierStr := "Standard"
+	skuNameStr := "Standard_B1s"
+	targetVMSS := vmssNames[0]
+	location := locations[0]
+	skuCapa := skuCapas[0]
+	task, err := aksClient.CreateOrUpdate(
+		ctx,
+		nodeRG,
+		targetVMSS,
+		compute.VirtualMachineScaleSet{
+			Location: &location,
+			Sku: &compute.Sku{
+				Tier:     &skuTierStr,
+				Name:     &skuNameStr,
+				Capacity: &skuCapa,
+			},
+		},
+	)
+	if err != nil {
+		json.NewEncoder(w).Encode(err)
+	}
+	json.NewEncoder(w).Encode(task)
+}
+
+func AddAKSnode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	clientID := "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
+	clientSec := "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
+	tenantID := "bc231a1b-ab45-4865-bdba-7724c2893f1c"
+	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	resourceGroupName := "DefaultResourceGroup-SE"
+	resourceName := "azure-cluster-1"
+	targetAgentPoolName := "agentpool"
+
+	authBaseURL := azure.PublicCloud.ActiveDirectoryEndpoint
+	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
+	oauthConfig, err := adal.NewOAuthConfig(authBaseURL, tenantID)
+
+	token, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSec, resourceURL)
+	if err != nil {
+		fmt.Println("tokenError")
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(err)
+	}
+
+	authorizer := autorest.NewBearerAuthorizer(token)
+	aksClient := containerservice.NewManagedClustersClientWithBaseURI(resourceURL, subID)
+	fmt.Println(resourceURL)
+
+	aksClient.Authorizer = authorizer
+	ctx := context.Background()
+
+	// region := "koreacentral"
+	// c, err := aksClient.ListOrchestrators(ctx, region, "managedClusters")
+	// for _, profile := range *c.Orchestrators {
+	// 	fmt.Println(*profile.OrchestratorType)
+	// }
+
+	c, err := aksClient.Get(ctx, resourceGroupName, resourceName)
+	//	get provision state
+	json.NewEncoder(w).Encode(c.ProvisioningState)
+
+	var nodeCount int32
+	var location string
+	if err != nil {
+		fmt.Println("Get AgentPools Error")
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(err)
+	} else {
+		location = *c.Location
+		for _, profile := range *c.AgentPoolProfiles {
+			if *profile.Name == targetAgentPoolName {
+				nodeCount = *profile.Count
+				break
+			}
+		}
+	}
+
+	nodeCount = nodeCount + 1
+	fmt.Println(nodeCount)
+
+	res, err := aksClient.CreateOrUpdate(
+		ctx,
+		resourceGroupName,
+		resourceName,
+		containerservice.ManagedCluster{
+			Location: &location,
+			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+				AgentPoolProfiles: &[]containerservice.ManagedClusterAgentPoolProfile{
+					{
+						Count: to.Int32Ptr(nodeCount),
+						Name:  to.StringPtr(targetAgentPoolName),
+					},
+				},
+			},
+		},
+	)
+
+	json.NewEncoder(w).Encode(res)
+
+	// 	get provision state after change config
+	c, err = aksClient.Get(ctx, resourceGroupName, resourceName)
+	json.NewEncoder(w).Encode(c.ProvisioningState)
 }
 
 func AddEKSnode(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +397,6 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(addResult)
-
 }
 
 func Addec2node(w http.ResponseWriter, r *http.Request) {
