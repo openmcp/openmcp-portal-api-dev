@@ -16,6 +16,18 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"getgkeclusters",
+		"GET",
+		"/apis/getgkeclusters",
+		handler.GetGKEClusters,
+	},
+	Route{
+		"gkechangenodecount",
+		"GET",
+		"/apis/gkechangenodecount",
+		handler.GKEChangeNodeCount,
+	},
+	Route{
 		"akschangevmss",
 		"GET",
 		"/apis/akschangevmss",
