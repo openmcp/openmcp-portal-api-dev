@@ -453,4 +453,5 @@ type ManagedCluster struct {
 type AgentPool struct {
 	Name     string `json:"name"`
 	VmssName string `json:"vmssname"`
+	Count    int32  `json:"nodecount"`
 }

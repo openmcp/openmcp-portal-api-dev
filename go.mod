@@ -19,6 +19,7 @@ require (
 	github.com/influxdata/influxdb v1.8.3
 	github.com/jinzhu/configor v1.2.0
 	github.com/lib/pq v1.8.0
+	github.com/libvirt/libvirt-go v7.0.0+incompatible
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1 // indirect

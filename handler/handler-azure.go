@@ -59,8 +59,9 @@ func AKSClusterInfo(authorizer autorest.Authorizer, ctx context.Context, subID s
 		var poolNames []string
 		for _, pool := range aPools {
 			poolName := *pool.Name
+			poolCount := *pool.Count
 			poolNames = append(poolNames, poolName)
-			ap[poolName] = AgentPool{poolName, ""}
+			ap[poolName] = AgentPool{poolName, "", poolCount}
 		}
 
 		lis := strings.Split(*clusters.ID, "/")
@@ -80,8 +81,9 @@ func AKSClusterInfo(authorizer autorest.Authorizer, ctx context.Context, subID s
 			i := list.Value()
 			// fmt.Println(*i.Name)
 			poolName := ap[*i.Tags["poolName"]].Name
+			poolCount := ap[*i.Tags["poolName"]].Count
 			vmssName := *i.Name
-			aplist = append(aplist, AgentPool{poolName, vmssName})
+			aplist = append(aplist, AgentPool{poolName, vmssName, poolCount})
 		}
 		lists = append(lists, ManagedCluster{*clusters.Name, rg, nodeRG, aplist, *clusters.Location})
 	}
