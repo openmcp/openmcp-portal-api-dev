@@ -16,6 +16,43 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"deletekvmnode",
+		"GET",
+		"/apis/deletekvmnode",
+		handler.DeleteKVMNode,
+	},
+	Route{
+		"createkvmnode",
+		"GET",
+		"/apis/createkvmnode",
+		handler.CreateKVMNode,
+	},
+	Route{
+		"changekvmnode",
+		"GET",
+		"/apis/changekvmnode",
+		handler.ChangeKVMNode,
+	},
+	Route{
+		"stopkvmnode",
+		"GET",
+		"/apis/stopkvmnode",
+		handler.StopKVMNode,
+	},
+	Route{
+		"startkvmnode",
+		"GET",
+		"/apis/startkvmnode",
+		handler.StartKVMNode,
+	},
+	Route{
+		"getkvmnodes",
+		"GET",
+		"/apis/getkvmnodes",
+		handler.GetKVMNodes,
+	},
+
+	Route{
 		"getgkeclusters",
 		"GET",
 		"/apis/getgkeclusters",
