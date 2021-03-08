@@ -16,6 +16,12 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"geteksclusterinfo",
+		"GET",
+		"/apis/geteksclusterinfo",
+		GetEKSClusterInfo,
+	},
+	Route{
 		"deletekvmnode",
 		"GET",
 		"/apis/deletekvmnode",
@@ -96,10 +102,10 @@ var routes = Routes{
 	},
 
 	Route{
-		"addeksnode",
-		"POST",
-		"/apis/addeksnode",
-		AddEKSnode,
+		"changeeksnode",
+		"GET",
+		"/apis/changeeksnode",
+		ChangeEKSnode,
 	},
 
 	Route{
