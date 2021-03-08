@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -690,4 +691,16 @@ func GetArrayElement(nMap interface{}, keys []string) []interface{} {
 		result = nil
 	}
 	return result
+}
+
+func GetJsonBody(rbody io.Reader) map[string]interface{} {
+	bodyBytes, err := ioutil.ReadAll(rbody)
+
+	var data map[string]interface{}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.Unmarshal([]byte(bodyBytes), &data)
+	return data
 }

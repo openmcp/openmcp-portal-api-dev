@@ -22,6 +22,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 
 	resNode := NodeRes{}
 	podsCount := make(map[string]int)
+	provider := "-"
 
 	clusterNames := []string{}
 	clusterNames = append(clusterNames, "openmcp")
@@ -29,6 +30,8 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		// provider := GetStringElement(element, []string{"metadata", "provider"})
+
 		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
 		if clusterType == "Ready" {
 			clusterNames = append(clusterNames, clusterName)
@@ -142,6 +145,15 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// if 조건으로 테스트용 Provider 입력해보자
+			if clusterName == "cluster1" {
+				provider = "eks"
+			} else if clusterName == "cluster2" {
+				provider = "gke"
+			} else if clusterName == "openmcp" {
+				provider = "aks"
+			}
+
 			node.Name = nodeName
 			node.Cluster = clusterName
 			node.Status = status
@@ -150,6 +162,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + " Core"
 			node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + " GIB"
 			node.Pods = podsCapacity
+			node.Provider = provider
 
 			resNode.Nodes = append(resNode.Nodes, node)
 		}
@@ -366,6 +379,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 
 func NodeOverview(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.URL.Query().Get("clustername")
+	provider := r.URL.Query().Get("provider")
 	vars := mux.Vars(r)
 	nodeName := vars["nodeName"]
 
@@ -440,9 +454,8 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 				status = "Unhealthy"
 			}
 		}
-
 		taint := Taint{"", "", ""}
-		basicInfo := NodeBasicInfo{nodeName, status, role, kebernetes, kubernetesProxy, ip, os, docker, createdTime, taint}
+		basicInfo := NodeBasicInfo{nodeName, status, role, kebernetes, kubernetesProxy, ip, os, docker, createdTime, taint, provider, clusterName}
 
 		// Node Resource Usage
 		cpuCapacity := GetStringElement(nodeData, []string{"status", "capacity", "cpu"})

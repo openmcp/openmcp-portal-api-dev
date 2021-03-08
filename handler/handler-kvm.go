@@ -93,10 +93,21 @@ func ChangeKVMNode(w http.ResponseWriter, r *http.Request) {
 func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+
+	//GET
 	// http://192.168.0.89:4885/apis/createkvmnode?agenturl=192.168.0.96&template=ubuntu16.04-clean&newvm=newvmvmvmvmvmvm
-	agentURL := r.URL.Query().Get("agenturl")
-	newvm := r.URL.Query().Get("newvm")
-	template := r.URL.Query().Get("template")
+
+	//Post로 변경
+	body := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	agentURL := body["agenturl"].(string)
+	newvm := body["newvm"].(string)
+	template := body["template"].(string)
+
+	// agentURL := r.URL.Query().Get("agenturl")
+	// newvm := r.URL.Query().Get("newvm")
+	// template := r.URL.Query().Get("template")
 
 	var client http.Client
 	resp, err := client.Get("http://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm)

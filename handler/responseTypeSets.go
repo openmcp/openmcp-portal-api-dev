@@ -30,6 +30,7 @@ type NodeInfo struct {
 	Cpu           string `json:"cpu"`
 	Ram           string `json:"memory"`
 	Pods          string `json:"pods"`
+	Provider      string `json:"provider"`
 }
 
 type NodeOverView struct {
@@ -49,6 +50,8 @@ type NodeBasicInfo struct {
 	Docker          string `json:"docker"`
 	CreatedTime     string `json:"created_time"`
 	Taint           Taint  `json:"taint"`
+	Provider        string `json:"provider"`
+	Cluster         string `json:"cluster"`
 }
 
 type NodeResourceUsage struct {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -109,17 +108,37 @@ func GKEChangeNodeCount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/gkechangenodecount?cluster=cluster-1&pool=default-pool&nodecnt=2
-	projectID := "just-advice-302807"
-	clientEmail := ""
-	privateKey := ""
-	clusterName := r.URL.Query().Get("cluster")
-	nodePoolName := r.URL.Query().Get("pool")
-	desireNodeCnt := r.URL.Query().Get("nodecnt")
-	desireNodeCnt = strings.TrimSpace(desireNodeCnt)
-	nodeCount, err := strconv.ParseInt(desireNodeCnt, 10, 64)
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	projectID := data["projectId"].(string)
+	clientEmail := data["clientEmail"].(string)
+	privateKey := data["privateKey"].(string)
+	clusterName := data["cluster"].(string)
+	nodePoolName := data["nodePool"].(string)
+	nodeCount, err := strconv.ParseInt(data["desiredCnt"].(string), 10, 64)
+
+	// projectID := "just-advice-302807"
+	// clientEmail := ""
+	// privateKey := ""
+	// clusterName := r.URL.Query().Get("cluster")
+	// nodePoolName := r.URL.Query().Get("pool")
+	// desireNodeCnt := r.URL.Query().Get("nodecnt")
+	// desireNodeCnt = strings.TrimSpace(desireNodeCnt)
+	// nodeCount, err := strconv.ParseInt(desireNodeCnt, 10, 64)
+
+	// fmt.Println(projectID)
+	// fmt.Println(clientEmail)
+	// fmt.Println(privateKey)
+	// fmt.Println(clusterName)
+	// fmt.Println(nodePoolName)
+	// fmt.Println(nodeCount,err)
+
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	fmt.Println(nodePoolName, nodeCount)
 	client, ctx := GetGKEAuth(projectID, clientEmail, privateKey)
 	svc, err := container.NewService(ctx, option.WithHTTPClient(client))
@@ -186,6 +205,27 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 		clusters = append(clusters, cluster)
 	}
 	json.NewEncoder(w).Encode(clusters)
+
+	// 	[
+	//     {
+	//         "clusterName": "cluster-1",
+	//         "location": "asia-northeast3-c",
+	//         "zone": "asia-northeast3-c",
+	//         "nodePools": [
+	//             {
+	//                 "nodePoolName": "default-pool",
+	//                 "machineType": "g1-small",
+	//                 "initialNodeCount": "2"
+	//             },
+	//             {
+	//                 "nodePoolName": "pool-1",
+	//                 "machineType": "n1-standard-1",
+	//                 "initialNodeCount": "1"
+	//             }
+	//         ],
+	//         "nodeCount": "3"
+	//     }
+	// ]
 }
 
 type GKEClusterInfo struct {

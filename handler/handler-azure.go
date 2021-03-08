@@ -250,15 +250,36 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/addaksnode?cluster=azure-cluster-2&pool=agentpool2&nodecnt=2
-	clientID := ""
-	clientSec := ""
-	tenantID := ""
-	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
 
-	clusterName := r.URL.Query().Get("cluster")
-	targetAgentPoolName := r.URL.Query().Get("pool")
-	nodeCountStr := r.URL.Query().Get("nodecnt")
-	nodeCount, err := strconv.ParseInt(nodeCountStr, 10, 64)
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clientID := data["clientId"].(string)
+	clientSec := data["clientSec"].(string)
+	tenantID := data["tenantId"].(string)
+	subID := data["subId"].(string)
+	clusterName := data["cluster"].(string)
+	targetAgentPoolName := data["nodePool"].(string)
+	// nodeCountStr := strconv.FormatFloat(data["desiredCnt"].(float64), 'f', 6, 64)
+	nodeCount, _ := strconv.ParseInt(data["desiredCnt"].(string), 10, 64)
+
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
+	// fmt.Println(subID)
+	// fmt.Println(clusterName)
+	// fmt.Println(targetAgentPoolName)
+	// fmt.Println(nodeCount)
+
+	// clientID := ""
+	// clientSec := ""
+	// tenantID := ""
+	// subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+
+	// clusterName := r.URL.Query().Get("cluster")
+	// targetAgentPoolName := r.URL.Query().Get("pool")
+	// nodeCountStr := r.URL.Query().Get("nodecnt")
+	// nodeCount, err := strconv.ParseInt(nodeCountStr, 10, 64)
 
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {

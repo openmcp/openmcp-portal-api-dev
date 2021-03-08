@@ -23,7 +23,7 @@ var routes = Routes{
 	},
 	Route{
 		"createkvmnode",
-		"GET",
+		"POST",
 		"/apis/createkvmnode",
 		handler.CreateKVMNode,
 	},
@@ -60,7 +60,7 @@ var routes = Routes{
 	},
 	Route{
 		"gkechangenodecount",
-		"GET",
+		"POST",
 		"/apis/gkechangenodecount",
 		handler.GKEChangeNodeCount,
 	},
@@ -84,7 +84,7 @@ var routes = Routes{
 	},
 	Route{
 		"addaksnode",
-		"GET",
+		"POST",
 		"/apis/addaksnode",
 		handler.AddAKSnode,
 	},
