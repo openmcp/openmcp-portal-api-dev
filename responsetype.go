@@ -55,3 +55,22 @@ type AgentPool struct {
 	Name     string `json:"name"`
 	VmssName string `json:"vmssname"`
 }
+
+type EKSInstance struct {
+	InstanceId string `json:"instance_id"`
+}
+
+type EKSNodegroup struct {
+	NGName           string        `json:"name"`
+	InstanceType     string        `json:"instance_type"`
+	DesiredSize      int64         `json:"desired_size"`
+	MaxSize          int64         `json:"max_size"`
+	MinSize          int64         `json:"min_size"`
+	AutoscalingGroup string        `json:"auto_scaling_group"`
+	Instances        []EKSInstance `json:"intances"`
+}
+
+type EKSCluster struct {
+	ClusterName string         `json:"name"`
+	Nodegroups  []EKSNodegroup `json:"nodegroups"`
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/eks"
 )
 
@@ -40,30 +41,92 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AddEKSnode(w http.ResponseWriter, r *http.Request) {
+func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	// http://192.168.0.51:4885/apis/geteksclusterinfo?region=ap-northeast-2
+	// aws test(lkh1434@gmail.com)
+	region := r.URL.Query().Get("region")
+	akid := "AKIAJGFO6OXHRN2H6DSA"
+	secretkey := "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" //
+	// akid := "AKIAVJTB7UPJPEMHUAJR"
+	// secretkey := "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" //
+	sess, err := session.NewSession(&aws.Config{
+		// Region:      aws.String("	ap-northeast-2"), //
+		Region:      aws.String(region), //
+		Credentials: credentials.NewStaticCredentials(akid, secretkey, ""),
+	})
+
+	if err != nil {
+		errmsg := jsonErr{503, "failed", "result fail"}
+		json.NewEncoder(w).Encode(errmsg)
+	}
+
+	var clusters []EKSCluster
+
+	svc := eks.New(sess)
+	asSvc := autoscaling.New(sess)
+	cls, _ := svc.ListClusters(&eks.ListClustersInput{})
+
+	for _, v := range cls.Clusters {
+		ngs, _ := svc.ListNodegroups(&eks.ListNodegroupsInput{
+			ClusterName: aws.String(*v),
+		})
+		var nodegroups []EKSNodegroup
+		for _, ng := range ngs.Nodegroups {
+			fmt.Println(*ng)
+			dng, _ := svc.DescribeNodegroup(&eks.DescribeNodegroupInput{
+				ClusterName:   aws.String(*v),
+				NodegroupName: aws.String(*ng),
+			})
+			desiredSize := dng.Nodegroup.ScalingConfig.DesiredSize
+			maxSize := dng.Nodegroup.ScalingConfig.MaxSize
+			minSize := dng.Nodegroup.ScalingConfig.MinSize
+			instanceType := dng.Nodegroup.InstanceTypes[0]
+			asgs := dng.Nodegroup.Resources.AutoScalingGroups
+			asEKSInstances := make(map[string][]EKSInstance)
+			var asgName string
+			for _, asg := range asgs {
+				instances, _ := asSvc.DescribeAutoScalingInstances(&autoscaling.DescribeAutoScalingInstancesInput{})
+				var ints []EKSInstance
+				for index, instance := range instances.AutoScalingInstances {
+					if *asg.Name == *instance.AutoScalingGroupName {
+						fmt.Println(instance)
+						fmt.Println(index, *instance.AutoScalingGroupName, *instance.InstanceId)
+						ints = append(ints, EKSInstance{*instance.InstanceId})
+					}
+				}
+				asgName = *asg.Name
+				asEKSInstances[*asg.Name] = ints
+			}
+			nodegroups = append(nodegroups, EKSNodegroup{
+				*ng,
+				*instanceType,
+				*desiredSize,
+				*maxSize,
+				*minSize,
+				asgName,
+				asEKSInstances[asgName],
+			})
+		}
+		clusters = append(clusters, EKSCluster{*v, nodegroups})
+	}
+	json.NewEncoder(w).Encode(clusters)
+}
+
+func ChangeEKSnode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	data := GetJsonBody(r.Body)
-	defer r.Body.Close() // 리소스 누출 방지
-	akid := data["accessKey"].(string)
-	secretkey := data["secretkey"].(string)
-	// nodeCountString := strconv.FormatFloat(data["desiredCnt"].(float64), 'f', 6, 64)
-	nodecnt, _ := strconv.ParseInt(data["desiredCnt"].(string), 10, 64)
-	clustername := data["cluster"].(string)
-	nodegroupname := data["nodePool"].(string)
-
-	// fmt.Println(akid)
-	// fmt.Println(secretkey)
-	// fmt.Println(nodecnt)
-	// fmt.Println(clustername)
-	// fmt.Println(nodegroupname)
-
-	//akid := "AKIAJGFO6OXHRN2H6DSA"                          //
-	// secretkey := "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" //
+	region := r.URL.Query().Get("region")
+	cluster := r.URL.Query().Get("cluster")
+	nodegroup := r.URL.Query().Get("nodegroup")
+	desiredSizeStr := r.URL.Query().Get("nodecount")
+	// http://192.168.0.51:4885/apis/changeeksnode?region=ap-northeast-2&cluster=eks-cluster1&nodegroup=ng-1&nodecount=3
+	akid := "AKIAJGFO6OXHRN2H6DSA"                          //
+	secretkey := "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" //
 	sess, err := session.NewSession(&aws.Config{
-		// Region:      aws.String("	ap-northeast-2"), //
-		Region:      aws.String("eu-west-2"), //
+		Region:      aws.String(region), //
 		Credentials: credentials.NewStaticCredentials(akid, secretkey, ""),
 	})
 
@@ -74,22 +137,7 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 
 	svc := eks.New(sess)
 
-	// result, err := svc.ListNodegroups(&eks.ListNodegroupsInput{
-	// 	ClusterName: aws.String("eks-cluster1"), //
-	// })
-
-	// nodegroupname := result.Nodegroups[0]
-
-	// result2, err := svc.DescribeNodegroup(&eks.DescribeNodegroupInput{
-	// 	ClusterName:   aws.String("eks-cluster1"), //
-	// 	NodegroupName: aws.String(nodegroupname),
-	// })
-
-	// beforecnt := result2.Nodegroup.ScalingConfig.DesiredSize
-	// var nodecnt int64
-	// nodecnt = 1
-	// desirecnt := *beforecnt + nodecnt
-	desirecnt := nodecnt
+	desirecnt, err := strconv.ParseInt(desiredSizeStr, 10, 64)
 
 	// // la := make(map[string]*string)
 	// // namelabel := "newlabel01"
@@ -98,11 +146,20 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 	// labelinput := eks.UpdateLabelsPayload{la["newlabel01"]}
 
 	addResult, err := svc.UpdateNodegroupConfig(&eks.UpdateNodegroupConfigInput{
+<<<<<<< HEAD
 		// ClusterName:   aws.String("eks-cluster1"), //
 		ClusterName:   aws.String(clustername), //
 		NodegroupName: aws.String(nodegroupname),
+=======
+		ClusterName:   aws.String(cluster), //
+		NodegroupName: aws.String(nodegroup),
+>>>>>>> b93995f0a826830a0e12c28718bc10f87a5c46b1
 		// Labels:        &eks.UpdateLabelsPayload{AddOrUpdateLabels: la},
-		ScalingConfig: &eks.NodegroupScalingConfig{DesiredSize: &desirecnt},
+		ScalingConfig: &eks.NodegroupScalingConfig{
+			DesiredSize: &desirecnt,
+			MaxSize:     &desirecnt,
+			MinSize:     &desirecnt,
+		},
 	})
 
 	if err != nil {
@@ -110,7 +167,10 @@ func AddEKSnode(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(errmsg)
 	}
 
+	successmsg := jsonErr{200, "success", addResult.String()}
 	fmt.Println(addResult)
+	json.NewEncoder(w).Encode(successmsg)
+
 }
 
 func Addec2node(w http.ResponseWriter, r *http.Request) {
