@@ -104,13 +104,12 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
 		json.NewEncoder(w).Encode(errorJson)
+	} else {
+		defer resp.Body.Close()
+		var data interface{}
+		json.NewDecoder(resp.Body).Decode(&data)
+		json.NewEncoder(w).Encode(&data)
 	}
-
-	defer resp.Body.Close()
-
-	var data interface{}
-	json.NewDecoder(resp.Body).Decode(&data)
-	json.NewEncoder(w).Encode(&data)
 }
 
 func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
