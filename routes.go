@@ -16,6 +16,24 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"changeekstype",
+		"GET",
+		"/apis/changeekstype",
+		handler.ChangeEKSInstanceType,
+	},
+	Route{
+		"eksinstancestart",
+		"GET",
+		"/apis/eksinstancestart",
+		handler.EKSInstanceStart,
+	},
+	Route{
+		"eksinstancestop",
+		"GET",
+		"/apis/eksinstancestop",
+		handler.EKSInstanceStop,
+	},
+	Route{
 		"geteksclusterinfo",
 		"GET",
 		"/apis/geteksclusterinfo",
