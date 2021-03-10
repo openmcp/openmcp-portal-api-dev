@@ -56,7 +56,6 @@ func StopKVMNode(w http.ResponseWriter, r *http.Request) {
 	var client http.Client
 	resp, err := client.Get("http://" + agentURL + ":10000/kvmstopnode?node=" + nodeName)
 	if err != nil {
-
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
 		json.NewEncoder(w).Encode(errorJson)
 	}
@@ -125,7 +124,6 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(errorJson)
 	} else {
 		defer resp.Body.Close()
-
 		var data interface{}
 		json.NewDecoder(resp.Body).Decode(&data)
 		json.NewEncoder(w).Encode(&data)
