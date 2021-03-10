@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -97,13 +98,19 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	//GET
 	// http://192.168.0.89:4885/apis/createkvmnode?agenturl=192.168.0.96&template=ubuntu16.04-clean&newvm=newvmvmvmvmvmvm
 
-	//Post로 변경
+	//Post
 	body := GetJsonBody(r.Body)
 	defer r.Body.Close() // 리소스 누출 방지
 
-	agentURL := body["agenturl"].(string)
+	agentURL := body["agentURL"].(string)
 	newvm := body["newvm"].(string)
 	template := body["template"].(string)
+	cluster := body["cluster"].(string)
+
+	fmt.Println(agentURL)
+	fmt.Println(newvm)
+	fmt.Println(template)
+	fmt.Println(cluster)
 
 	// agentURL := r.URL.Query().Get("agenturl")
 	// newvm := r.URL.Query().Get("newvm")
@@ -113,15 +120,16 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Get("http://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm)
 
 	if err != nil {
-		errorJson := jsonErr{500, "agent connect fail", err.Error()}
+		errorJson := jsonErr{500, "Agent Connect Fail", err.Error()}
+		fmt.Println("err", errorJson)
 		json.NewEncoder(w).Encode(errorJson)
+	} else {
+		defer resp.Body.Close()
+
+		var data interface{}
+		json.NewDecoder(resp.Body).Decode(&data)
+		json.NewEncoder(w).Encode(&data)
 	}
-
-	defer resp.Body.Close()
-
-	var data interface{}
-	json.NewDecoder(resp.Body).Decode(&data)
-	json.NewEncoder(w).Encode(&data)
 }
 
 func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
