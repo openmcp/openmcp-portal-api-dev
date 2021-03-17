@@ -569,7 +569,7 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 		// get podUsage counts by nodename groups
 		for _, element := range podItems {
 			nodeCheck := GetInterfaceElement(element, []string{"spec", "nodeName"})
-			if nodeCheck.(string) == nodeName {
+			if nodeCheck != nil && nodeCheck.(string) == nodeName {
 				podUseCount++
 			}
 		}

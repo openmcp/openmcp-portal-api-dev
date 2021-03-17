@@ -59,13 +59,13 @@ var routes = Routes{
 	},
 	Route{
 		"stopkvmnode",
-		"GET",
+		"POST",
 		"/apis/stopkvmnode",
 		handler.StopKVMNode,
 	},
 	Route{
 		"startkvmnode",
-		"GET",
+		"POST",
 		"/apis/startkvmnode",
 		handler.StartKVMNode,
 	},
