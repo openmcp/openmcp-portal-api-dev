@@ -1,5 +1,7 @@
 package handler
 
+
+
 type ClustersRes struct {
 	Clusters []ClusterInfo `json:"clusters"`
 }
@@ -31,6 +33,7 @@ type NodeInfo struct {
 	Ram           string `json:"memory"`
 	Pods          string `json:"pods"`
 	Provider      string `json:"provider"`
+	Region	string `json:"region"`
 }
 
 type NodeOverView struct {

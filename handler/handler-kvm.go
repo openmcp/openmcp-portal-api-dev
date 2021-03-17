@@ -23,7 +23,6 @@ func GetKVMNodes(w http.ResponseWriter, r *http.Request) {
 	var data interface{}
 	json.NewDecoder(resp.Body).Decode(&data)
 	json.NewEncoder(w).Encode(&data)
-
 }
 
 func StartKVMNode(w http.ResponseWriter, r *http.Request) {
