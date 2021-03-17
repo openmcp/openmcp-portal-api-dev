@@ -179,7 +179,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			if nodeCluster.Name == "cluster1" {
 				provider = "eks"
 			} else if nodeCluster.Name == "cluster2" {
-				provider = "gke"
+				provider = "kvm"
 			} else if nodeCluster.Name == "openmcp" {
 				provider = "aks"
 			}

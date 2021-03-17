@@ -29,7 +29,7 @@ func StartKVMNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/startkvmnode?agenturl=192.168.0.96&node=rancher
-	agentURL := r.URL.Query().Get("agenturl")
+	agentURL := r.URL.Query().Get("agentUrl")
 	nodeName := r.URL.Query().Get("node")
 	var client http.Client
 	resp, err := client.Get("http://" + agentURL + ":10000/kvmstartnode?node=" + nodeName)

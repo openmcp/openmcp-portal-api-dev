@@ -112,14 +112,33 @@ func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
 func StopAKSNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	// http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
-	clientID := ""
-	clientSec := ""
-	tenantID := ""
-	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// // http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
+	// clientID := ""
+	// clientSec := ""
+	// tenantID := ""
+	// subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
 
-	clusterName := r.URL.Query().Get("cluster")
-	vmName := r.URL.Query().Get("node")
+	// clusterName := r.URL.Query().Get("cluster")
+	// vmName := r.URL.Query().Get("node")
+
+	//Post
+	body := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clientID := body["clientId"].(string)
+	clientSec := body["clientSec"].(string)
+	tenantID := body["tenantId"].(string)
+	subID := body["subId"].(string)
+
+	clusterName := body["cluster"].(string)
+	vmName := body["node"].(string)
+
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
+	// fmt.Println(subID)
+	// fmt.Println(clusterName)
+	// fmt.Println(vmName)
 
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {
@@ -177,14 +196,33 @@ func StopAKSNode(w http.ResponseWriter, r *http.Request) {
 func StartAKSNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	// http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
-	clientID := ""
-	clientSec := ""
-	tenantID := ""
-	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// // http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
+	// clientID := ""
+	// clientSec := ""
+	// tenantID := ""
+	// subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
 
-	clusterName := r.URL.Query().Get("cluster")
-	vmName := r.URL.Query().Get("node")
+	// clusterName := r.URL.Query().Get("cluster")
+	// vmName := r.URL.Query().Get("node")
+
+	//Post
+	body := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clientID := body["clientId"].(string)
+	clientSec := body["clientSec"].(string)
+	tenantID := body["tenantId"].(string)
+	subID := body["subId"].(string)
+
+	clusterName := body["cluster"].(string)
+	vmName := body["node"].(string)
+
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
+	// fmt.Println(subID)
+	// fmt.Println(clusterName)
+	// fmt.Println(vmName)
 
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {

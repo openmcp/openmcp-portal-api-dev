@@ -101,13 +101,13 @@ var routes = Routes{
 	},
 	Route{
 		"stopaksnode",
-		"GET",
+		"POST",
 		"/apis/stopaksnode",
 		handler.StopAKSNode,
 	},
 	Route{
 		"startaksnode",
-		"GET",
+		"POST",
 		"/apis/startaksnode",
 		handler.StartAKSNode,
 	},
