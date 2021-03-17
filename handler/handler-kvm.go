@@ -104,6 +104,9 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	newvm := body["newvm"].(string)
 	template := body["template"].(string)
 	cluster := body["cluster"].(string)
+	clusterMaster := body["master"].(string)
+	mPass := body["mpass"].(string)
+	wPass := body["wpass"].(string)
 
 	fmt.Println(agentURL)
 	fmt.Println(newvm)
@@ -115,7 +118,7 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	// template := r.URL.Query().Get("template")
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm)
+	resp, err := client.Get("http://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm + "&master=" + clusterMaster + "&mpass=" + mPass + "&wpass=" + wPass)
 
 	if err != nil {
 		errorJson := jsonErr{500, "Agent Connect Fail", err.Error()}
