@@ -22,16 +22,16 @@ var routes = Routes{
 		handler.ChangeEKSInstanceType,
 	},
 	Route{
-		"eksinstancestart",
-		"GET",
-		"/apis/eksinstancestart",
-		handler.EKSInstanceStart,
+		"starteksnode",
+		"POST",
+		"/apis/starteksnode",
+		handler.StartEKSNode,
 	},
 	Route{
-		"eksinstancestop",
-		"GET",
-		"/apis/eksinstancestop",
-		handler.EKSInstanceStop,
+		"stopeksnode",
+		"POST",
+		"/apis/stopeksnode",
+		handler.StartEKSNode,
 	},
 	Route{
 		"geteksclusterinfo",
@@ -75,7 +75,6 @@ var routes = Routes{
 		"/apis/getkvmnodes",
 		handler.GetKVMNodes,
 	},
-
 	Route{
 		"getgkeclusters",
 		"GET",
@@ -101,10 +100,16 @@ var routes = Routes{
 		handler.AKSGetAllResources,
 	},
 	Route{
-		"aksnodepower",
+		"stopaksnode",
 		"GET",
-		"/apis/aksnodepower",
-		handler.AKSNodePower,
+		"/apis/stopaksnode",
+		handler.StopAKSNode,
+	},
+	Route{
+		"startaksnode",
+		"GET",
+		"/apis/startaksnode",
+		handler.StartAKSNode,
 	},
 	Route{
 		"addaksnode",

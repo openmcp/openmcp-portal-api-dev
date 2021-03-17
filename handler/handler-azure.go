@@ -109,7 +109,7 @@ func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(mc)
 }
 
-func AKSNodePower(w http.ResponseWriter, r *http.Request) {
+func StopAKSNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
@@ -174,6 +174,74 @@ func AKSNodePower(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(progress)
 }
 
+func StartAKSNode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	// http://192.168.0.89:4885/apis/aksnodepower?cluster=azure-cluster-1&node=aks-agentpool-17101166-vmss_0
+	clientID := ""
+	clientSec := ""
+	tenantID := ""
+	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+
+	clusterName := r.URL.Query().Get("cluster")
+	vmName := r.URL.Query().Get("node")
+
+	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
+	if err != nil {
+		fmt.Println("AKSAuth failed", err)
+	}
+
+	mc := AKSClusterInfo(authorizer, ctx, subID)
+	var clusterData ManagedCluster
+
+	for _, d := range mc {
+		if d.Name == clusterName {
+			clusterData = d
+			break
+		}
+	}
+
+	nodeRG := clusterData.NodeResourceGrouop
+	vmssNames := clusterData.AgentPool
+	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
+	vmsClient := compute.NewVirtualMachineScaleSetVMsClientWithBaseURI(resourceURL, subID)
+	vmsClient.Authorizer = authorizer
+	// filterStr := "name eq '" + vmName + "'"
+	var targetVmss string = ""
+	var tagetVMID string
+	for _, d := range vmssNames {
+		for list, err := vmsClient.ListComplete(ctx, nodeRG, d.VmssName, "", "", ""); list.NotDone(); err = list.Next() {
+			if err != nil {
+				fmt.Println("got error while traverising vms list: ", err)
+			}
+			i := list.Value()
+			fmt.Println(*i.Name, *i.InstanceID)
+			if *i.Name == vmName {
+				targetVmss = d.VmssName
+				tagetVMID = *i.InstanceID
+				break
+			}
+		}
+		if targetVmss != "" {
+			break
+		}
+	}
+	// fmt.Println(vmName)
+	// fmt.Println(nodeRG)
+	// fmt.Println(vmssNames)
+	// fmt.Println(targetVmss)
+	// fmt.Println(tagetVMID)
+
+	// vmssClient.PowerOff(ctx, config.GroupName(), vmssName, nil, nil)
+	// vmssClient.Start(ctx, config.GroupName(), vmssName, nil)
+	progress, err := vmsClient.Start(ctx, nodeRG, targetVmss, tagetVMID)
+	if err != nil {
+		json.NewEncoder(w).Encode(err)
+	}
+	json.NewEncoder(w).Encode(progress)
+}
+
+// aks resource change
 func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -246,6 +314,7 @@ func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
 	// }
 }
 
+// add/remove aks node
 func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
