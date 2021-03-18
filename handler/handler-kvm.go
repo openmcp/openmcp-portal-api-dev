@@ -158,8 +158,15 @@ func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/deletekvmnode?agenturl=192.168.0.96&targetvm=newnode-1
-	agentURL := r.URL.Query().Get("agenturl")
-	targetvm := r.URL.Query().Get("targetvm")
+	// agentURL := r.URL.Query().Get("agenturl")
+	// targetvm := r.URL.Query().Get("targetvm")
+
+	body := GetJsonBody(r.Body)
+	agentURL := body["agentURL"].(string)
+	targetvm := body["targetvm"].(string)
+
+	// fmt.Println(agentURL)
+	// fmt.Println(targetvm)
 
 	var client http.Client
 	resp, err := client.Get("http://" + agentURL + ":10000/deletekvmnode?node=" + targetvm)
@@ -174,5 +181,4 @@ func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
 	var data interface{}
 	json.NewDecoder(resp.Body).Decode(&data)
 	json.NewEncoder(w).Encode(&data)
-
 }

@@ -41,7 +41,7 @@ var routes = Routes{
 	},
 	Route{
 		"deletekvmnode",
-		"GET",
+		"POST",
 		"/apis/deletekvmnode",
 		handler.DeleteKVMNode,
 	},
