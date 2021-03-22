@@ -17,7 +17,7 @@ type Routes []Route
 var routes = Routes{
 	Route{
 		"changeekstype",
-		"GET",
+		"POST",
 		"/apis/changeekstype",
 		handler.ChangeEKSInstanceType,
 	},

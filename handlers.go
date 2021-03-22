@@ -120,23 +120,23 @@ func ChangeEKSnode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	//Post로 변경
-	// body := GetJsonBody(r.Body)
-	// defer r.Body.Close() // 리소스 누출 방지
-	// region := body["region"].(string)
-	// cluster := body["cluster"].(string)
-	// nodegroup := body["nodePool"].(string)
-	// desiredSizeStr := body["desiredCnt"].(string)
-	// akid := body["accessKey"].(string)
-	// secretkey := body["secretkey"].(string)
+	// Post로 변경
+	body := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+	region := body["region"].(string)
+	cluster := body["cluster"].(string)
+	nodegroup := body["nodePool"].(string)
+	desiredSizeStr := body["desiredCnt"].(string)
+	akid := body["accessKey"].(string)
+	secretkey := body["secretkey"].(string)
 
 	// http://192.168.0.51:4885/apis/changeeksnode?region=ap-northeast-2&cluster=eks-cluster1&nodegroup=ng-1&nodecount=3
-	region := r.URL.Query().Get("region")
-	cluster := r.URL.Query().Get("cluster")
-	nodegroup := r.URL.Query().Get("nodegroup")
-	desiredSizeStr := r.URL.Query().Get("nodecount")
-	akid := "AKIAJGFO6OXHRN2H6DSA"
-	secretkey := "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"
+	// region := r.URL.Query().Get("region")
+	// cluster := r.URL.Query().Get("cluster")
+	// nodegroup := r.URL.Query().Get("nodegroup")
+	// desiredSizeStr := r.URL.Query().Get("nodecount")
+	// akid := "AKIAJGFO6OXHRN2H6DSA"
+	// secretkey := "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"
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: credentials.NewStaticCredentials(akid, secretkey, ""),

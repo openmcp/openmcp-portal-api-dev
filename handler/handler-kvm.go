@@ -125,15 +125,16 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	agentURL := body["agentURL"].(string)
 	newvm := body["newvm"].(string)
 	template := body["template"].(string)
-	cluster := body["cluster"].(string)
+	// cluster := body["cluster"].(string)
+
 	clusterMaster := body["master"].(string)
 	mPass := body["mpass"].(string)
 	wPass := body["wpass"].(string)
 
-	fmt.Println(agentURL)
-	fmt.Println(newvm)
-	fmt.Println(template)
-	fmt.Println(cluster)
+	// fmt.Println(agentURL)
+	// fmt.Println(newvm)
+	// fmt.Println(template)
+	// fmt.Println(cluster)
 
 	// agentURL := r.URL.Query().Get("agenturl")
 	// newvm := r.URL.Query().Get("newvm")

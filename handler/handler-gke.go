@@ -115,6 +115,7 @@ func GKEChangeNodeCount(w http.ResponseWriter, r *http.Request) {
 	projectID := data["projectId"].(string)
 	clientEmail := data["clientEmail"].(string)
 	privateKey := data["privateKey"].(string)
+
 	clusterName := data["cluster"].(string)
 	nodePoolName := data["nodePool"].(string)
 	nodeCount, err := strconv.ParseInt(data["desiredCnt"].(string), 10, 64)
