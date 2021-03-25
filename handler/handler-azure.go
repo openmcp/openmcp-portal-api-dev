@@ -95,10 +95,18 @@ func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	clientID := ""
-	clientSec := ""
-	tenantID := ""
-	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	data := GetJsonBody(r.Body)
+	
+	// clientID := ""
+	// clientSec := ""
+	// tenantID := ""
+	// subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	clientID := data["clientId"].(string)
+	clientSec := data["clientSec"].(string)
+	tenantID := data["tenantId"].(string)
+	subID := data["subId"].(string)
+
+
 
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {
@@ -284,15 +292,37 @@ func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/akschangevmss?cluster=azure-cluster-2&pool=agentpool2
-	clientID := ""
-	clientSec := ""
-	tenantID := ""
-	skuTierStr := "Standard"
-	skuNameStr := "Standard_B1s"
-	subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// clientID := ""
+	// clientSec := ""
+	// tenantID := ""
+	// subID := "dc80d3cf-4e1a-4b9a-8785-65c4b739e8d2"
+	// skuTierStr := "Standard"
+	// skuNameStr := "Standard_B1s"
 
-	clusterName := r.URL.Query().Get("cluster")
-	targetPool := r.URL.Query().Get("pool")
+	// clusterName := r.URL.Query().Get("cluster")
+	// targetPool := r.URL.Query().Get("pool")
+
+	data := GetJsonBody(r.Body)
+
+	clientID := data["clientId"].(string)
+	clientSec := data["clientSec"].(string)
+	tenantID := data["tenantId"].(string)
+	subID := data["subId"].(string)
+	skuTierStr := data["skuTierStr"].(string)
+	skuNameStr := data["skuNameStr"].(string)
+
+	clusterName := data["cluster"].(string)
+	targetPool := data["poolName"].(string)
+
+
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
+	// fmt.Println(subID)
+	// fmt.Println(skuTierStr)
+	// fmt.Println(skuNameStr)
+	// fmt.Println(clusterName)
+	// fmt.Println(targetPool)
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {
 		fmt.Println("AKSAuth failed", err)

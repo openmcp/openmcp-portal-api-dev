@@ -29,7 +29,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	clusterNames = append(clusterNames, "openmcp")
 	cluster := ClusterInfo{}
 	cluster.Name = "openmcp"
-	cluster.Provider = "-"
+	cluster.Provider = "aks"
 	cluster.Zones = "KR"
 	cluster.Region = "AS"
 	resCluster.Clusters = append(resCluster.Clusters, cluster)
@@ -40,10 +40,23 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		zones := GetStringElement(element, []string{"status", "zones"})
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+		provider := "-"
 		if clusterType == "Ready" {
 			clusterNames = append(clusterNames, clusterName)
 			cluster.Name = clusterName
-			cluster.Provider = "-"
+
+			// if 조건으로 테스트용 Provider 입력해보자
+			if clusterName == "cluster1" {
+				provider = "eks"
+			} else if clusterName == "cluster2" {
+				provider = "kvm"
+			} else if clusterName == "openmcp" {
+				provider = "aks"
+			} else {
+				provider = "-"
+			}
+			
+			cluster.Provider = provider
 			cluster.Zones = zones
 			cluster.Region = region
 			resCluster.Clusters = append(resCluster.Clusters, cluster)
@@ -254,7 +267,7 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 	type joinable struct {
 		Name     string `json:"name"`
 		Endpoint string `json:"endpoint"`
-		Platform string `json:"platform"`
+		Provider string `json:"provider"`
 		Region   string `json:"region"`
 		Zone     string `json:"zone"`
 	}
@@ -264,10 +277,11 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 		for _, element := range clusterData["items"].([]interface{}) {
 			name := element.(map[string]interface{})["name"].(string)
 			endpoint := element.(map[string]interface{})["endpoint"].(string)
-			platform := element.(map[string]interface{})["platform"].(string)
+			provider := element.(map[string]interface{})["platform"].(string)
 			region := element.(map[string]interface{})["region"].(string)
 			zone := element.(map[string]interface{})["zone"].(string)
-			res := joinable{name, endpoint, platform, region, zone}
+
+			res := joinable{name, endpoint, provider, region, zone}
 			joinableLists = append(joinableLists, res)
 		}
 		json.NewEncoder(w).Encode(joinableLists)

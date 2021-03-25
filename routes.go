@@ -53,7 +53,7 @@ var routes = Routes{
 	},
 	Route{
 		"changekvmnode",
-		"GET",
+		"POST",
 		"/apis/changekvmnode",
 		handler.ChangeKVMNode,
 	},
@@ -89,13 +89,13 @@ var routes = Routes{
 	},
 	Route{
 		"akschangevmss",
-		"GET",
+		"POST",
 		"/apis/akschangevmss",
 		handler.AKSChangeVMSS,
 	},
 	Route{
 		"aksgetallres",
-		"GET",
+		"POST",
 		"/apis/aksgetallres",
 		handler.AKSGetAllResources,
 	},

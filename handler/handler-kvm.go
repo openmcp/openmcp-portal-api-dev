@@ -91,11 +91,20 @@ func StopKVMNode(w http.ResponseWriter, r *http.Request) {
 func ChangeKVMNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	// http://192.168.0.89:4885/apis/changekvmnode?agenturl=192.168.0.96&node=rancher&cpu=4&mem=8088
-	agentURL := r.URL.Query().Get("agenturl")
-	nodeName := r.URL.Query().Get("node")
-	vCpu := r.URL.Query().Get("cpu")
-	memory := r.URL.Query().Get("mem")
+	// // http://192.168.0.89:4885/apis/changekvmnode?agenturl=192.168.0.96&node=rancher&cpu=4&mem=8088
+	// agentURL := r.URL.Query().Get("agenturl")
+	// nodeName := r.URL.Query().Get("node")
+	// vCpu := r.URL.Query().Get("cpu")
+	// memory := r.URL.Query().Get("mem")
+
+	body := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	agentURL := body["agentURL"].(string)
+	nodeName := body["node"].(string)
+	vCpu := body["cpu"].(string)
+	memory := body["memory"].(string)
+
 	var client http.Client
 	resp, err := client.Get("http://" + agentURL + ":10000/changekvmnode?node=" + nodeName + "&cpu=" + vCpu + "&mem=" + memory)
 
