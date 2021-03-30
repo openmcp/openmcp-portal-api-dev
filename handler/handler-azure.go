@@ -17,14 +17,16 @@ import (
 )
 
 func AKSAuthorizer(clientID string, clientSec string, tenantID string) (*autorest.BearerAuthorizer, context.Context, error) {
-	clientID = "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
-	clientSec = "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
-	tenantID = "bc231a1b-ab45-4865-bdba-7724c2893f1c"
+	// clientID = "1edadbd7-d466-43b1-ad73-15a2ee9080ff"
+	// clientSec = "07.Tx2r7GobBf.Suq7quNRhO_642z-p~6a"
+	// tenantID = "bc231a1b-ab45-4865-bdba-7724c2893f1c"
 
 	authBaseURL := azure.PublicCloud.ActiveDirectoryEndpoint
 	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
 	oauthConfig, err := adal.NewOAuthConfig(authBaseURL, tenantID)
-
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
 	token, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSec, resourceURL)
 	if err != nil {
 		fmt.Println("tokenError")
@@ -46,11 +48,18 @@ func AKSClusterInfo(authorizer autorest.Authorizer, ctx context.Context, subID s
 	vmssClient.Authorizer = authorizer
 
 	var lists []ManagedCluster
+	// lll, err := aksClient.ListComplete(ctx)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	fmt.Println(lll)
+	// }
 
 	for list, err := aksClient.ListComplete(ctx); list.NotDone(); err = list.Next() {
 		if err != nil {
 			fmt.Println("got error while traverising Cluster list: ", err)
 		}
+
 		clusters := list.Value()
 
 		aPools := *clusters.AgentPoolProfiles
@@ -87,6 +96,7 @@ func AKSClusterInfo(authorizer autorest.Authorizer, ctx context.Context, subID s
 		}
 		lists = append(lists, ManagedCluster{*clusters.Name, rg, nodeRG, aplist, *clusters.Location})
 	}
+
 	return lists
 }
 
@@ -96,7 +106,7 @@ func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	data := GetJsonBody(r.Body)
-	
+
 	// clientID := ""
 	// clientSec := ""
 	// tenantID := ""
@@ -105,8 +115,6 @@ func AKSGetAllResources(w http.ResponseWriter, r *http.Request) {
 	clientSec := data["clientSec"].(string)
 	tenantID := data["tenantId"].(string)
 	subID := data["subId"].(string)
-
-
 
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {
@@ -314,7 +322,6 @@ func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
 	clusterName := data["cluster"].(string)
 	targetPool := data["poolName"].(string)
 
-
 	// fmt.Println(clientID)
 	// fmt.Println(clientSec)
 	// fmt.Println(tenantID)
@@ -427,11 +434,13 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	var clusterData ManagedCluster
 
 	for _, d := range mc {
+		// fmt.Println(clusterName, d.Name)
 		if d.Name == clusterName {
 			clusterData = d
 			break
 		}
 	}
+
 	resourceURL := azure.PublicCloud.ResourceManagerEndpoint
 
 	aksClient := containerservice.NewManagedClustersClientWithBaseURI(resourceURL, subID)
@@ -439,6 +448,7 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	resourceGroupName := clusterData.ResourceGroup
 	resourceName := clusterName
 	location := clusterData.Location
+	fmt.Println(resourceGroupName)
 	res, err := aksClient.CreateOrUpdate(
 		ctx,
 		resourceGroupName,
@@ -450,12 +460,16 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 					{
 						Count: to.Int32Ptr(int32(nodeCount)),
 						Name:  to.StringPtr(targetAgentPoolName),
+						Mode:  containerservice.AgentPoolMode("System"),
 					},
 				},
 			},
 		},
 	)
-
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Count Change Success")
 	json.NewEncoder(w).Encode(res)
 
 	// // get provision state after change config
