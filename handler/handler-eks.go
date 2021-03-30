@@ -81,6 +81,7 @@ func StopEKSNode(w http.ResponseWriter, r *http.Request) {
 
 	result, err := asSvc.EnterStandby(input)
 	fmt.Println(result)
+
 	if err != nil {
 		errmsg := jsonErr{503, "failed", err.Error()}
 		json.NewEncoder(w).Encode(errmsg)
@@ -333,18 +334,20 @@ func ChangeEKSInstanceType(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// change instance type
-	_, err = svc.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
+	res, err := svc.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
 		InstanceId: aws.String(targetID),
 		InstanceType: &ec2.AttributeValue{
 			Value: aws.String(instanceType),
 		},
 	})
-	fmt.Println("change instance type success")
+	fmt.Println(res)
 
 	if err != nil {
+		fmt.Println(err)
 		errmsg := jsonErr{503, "failed", err.Error()}
 		json.NewEncoder(w).Encode(errmsg)
 	} else {
+		fmt.Println("change instance type success")
 		// exit standby
 		input := &autoscaling.ExitStandbyInput{
 			AutoScalingGroupName: aws.String(targetASG),

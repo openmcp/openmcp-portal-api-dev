@@ -31,7 +31,7 @@ var routes = Routes{
 		"stopeksnode",
 		"POST",
 		"/apis/stopeksnode",
-		handler.StartEKSNode,
+		handler.StopEKSNode,
 	},
 	Route{
 		"geteksclusterinfo",

@@ -164,7 +164,6 @@ func ChangeEKSnode(w http.ResponseWriter, r *http.Request) {
 		ScalingConfig: &eks.NodegroupScalingConfig{
 			DesiredSize: &desirecnt,
 			MaxSize:     &desirecnt,
-			MinSize:     &desirecnt,
 		},
 	})
 
