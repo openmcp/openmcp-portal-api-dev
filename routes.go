@@ -126,7 +126,7 @@ var routes = Routes{
 
 	Route{
 		"changeeksnode",
-		"GET",
+		"POST",
 		"/apis/changeeksnode",
 		ChangeEKSnode,
 	},
