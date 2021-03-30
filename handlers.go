@@ -47,11 +47,20 @@ func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
 	// http://192.168.0.51:4885/apis/geteksclusterinfo?region=ap-northeast-2
 	// aws test(lkh1434@gmail.com)
 
-	region := r.URL.Query().Get("region")
-	akid := "AKIAJGFO6OXHRN2H6DSA"
-	secretkey := "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" //
-	// akid := "AKIAVJTB7UPJPEMHUAJR"
-	// secretkey := "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" //
+	// region := r.URL.Query().Get("region")
+	// akid := "AKIAJGFO6OXHRN2H6DSA"
+	// secretkey := "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" //
+	// // akid := "AKIAVJTB7UPJPEMHUAJR"
+	// // secretkey := "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" //
+
+	data:=GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	region := data["region"].(string)
+	akid := data["accessKey"].(string)
+	secretkey := data["secretKey"].(string)
+	
+
 	sess, err := session.NewSession(&aws.Config{
 		// Region:      aws.String("	ap-northeast-2"), //
 		Region:      aws.String(region), //

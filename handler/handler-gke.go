@@ -175,9 +175,17 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	// http://192.168.0.89:4885/apis/getgkeclusters
-	projectID := "just-advice-302807"
-	clientEmail := ""
-	privateKey := ""
+	// projectID := "just-advice-302807"
+	// clientEmail := ""
+	// privateKey := ""
+
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	projectID := data["projectId"].(string)
+	clientEmail := data["clientEmail"].(string)
+	privateKey := data["privateKey"].(string)
 
 	client, ctx := GetGKEAuth(projectID, clientEmail, privateKey)
 	svc, err := container.NewService(ctx, option.WithHTTPClient(client))
