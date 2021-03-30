@@ -35,7 +35,7 @@ var routes = Routes{
 	},
 	Route{
 		"geteksclusterinfo",
-		"GET",
+		"POST",
 		"/apis/geteksclusterinfo",
 		GetEKSClusterInfo,
 	},
@@ -77,7 +77,7 @@ var routes = Routes{
 	},
 	Route{
 		"getgkeclusters",
-		"GET",
+		"POST",
 		"/apis/getgkeclusters",
 		handler.GetGKEClusters,
 	},
@@ -126,7 +126,7 @@ var routes = Routes{
 
 	Route{
 		"changeeksnode",
-		"GET",
+		"POST",
 		"/apis/changeeksnode",
 		ChangeEKSnode,
 	},

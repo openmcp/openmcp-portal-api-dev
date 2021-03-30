@@ -52,6 +52,15 @@ func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
 	secretkey := "QnD+TaxAwJme1krSz7tGRgrI5ORiv0aCiZ95t1XK" //
 	// akid := "AKIAVJTB7UPJPEMHUAJR"
 	// secretkey := "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" //
+
+	data:=GetJsonBody(r.Body)
+	defer r.Body
+
+	region := data["region"].(string)
+	akid := data["accessKey"].(string)
+	secretkey := data["secretKey"].(string)
+	
+
 	sess, err := session.NewSession(&aws.Config{
 		// Region:      aws.String("	ap-northeast-2"), //
 		Region:      aws.String(region), //
