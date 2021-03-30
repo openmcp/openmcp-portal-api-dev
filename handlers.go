@@ -137,7 +137,7 @@ func ChangeEKSnode(w http.ResponseWriter, r *http.Request) {
 	nodegroup := body["nodePool"].(string)
 	desiredSizeStr := body["desiredCnt"].(string)
 	akid := body["accessKey"].(string)
-	secretkey := body["secretkey"].(string)
+	secretkey := body["secretKey"].(string)
 
 	// http://192.168.0.51:4885/apis/changeeksnode?region=ap-northeast-2&cluster=eks-cluster1&nodegroup=ng-1&nodecount=3
 	// region := r.URL.Query().Get("region")
