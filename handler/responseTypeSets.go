@@ -1,7 +1,5 @@
 package handler
 
-
-
 type ClustersRes struct {
 	Clusters []ClusterInfo `json:"clusters"`
 }
@@ -33,7 +31,7 @@ type NodeInfo struct {
 	Ram           string `json:"memory"`
 	Pods          string `json:"pods"`
 	Provider      string `json:"provider"`
-	Region	string `json:"region"`
+	Region        string `json:"region"`
 }
 
 type NodeOverView struct {
@@ -453,6 +451,7 @@ type ManagedCluster struct {
 	NodeResourceGrouop string      `json:"noderesourcegroup"`
 	AgentPool          []AgentPool `json:"agentpools"`
 	Location           string      `json:"location"`
+	ProvisionState     string      `json:"pvstate"`
 	// VmssNames          []string `json:"vmssnames"`
 }
 

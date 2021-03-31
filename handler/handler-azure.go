@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
@@ -94,7 +95,7 @@ func AKSClusterInfo(authorizer autorest.Authorizer, ctx context.Context, subID s
 			vmssName := *i.Name
 			aplist = append(aplist, AgentPool{poolName, vmssName, poolCount})
 		}
-		lists = append(lists, ManagedCluster{*clusters.Name, rg, nodeRG, aplist, *clusters.Location})
+		lists = append(lists, ManagedCluster{*clusters.Name, rg, nodeRG, aplist, *clusters.Location, *clusters.ProvisioningState})
 	}
 
 	return lists
@@ -434,7 +435,7 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	var clusterData ManagedCluster
 
 	for _, d := range mc {
-		// fmt.Println(clusterName, d.Name)
+		fmt.Println(clusterName, d.Name)
 		if d.Name == clusterName {
 			clusterData = d
 			break
@@ -448,7 +449,29 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	resourceGroupName := clusterData.ResourceGroup
 	resourceName := clusterName
 	location := clusterData.Location
-	fmt.Println(resourceGroupName)
+	fmt.Println("==========================")
+	fmt.Println(clusterData.ProvisionState)
+	pvstate := clusterData.ProvisionState
+
+	for i := 0; i < 100; i++ {
+		fmt.Println(pvstate)
+		if pvstate != "Succeeded" {
+			mc := AKSClusterInfo(authorizer, ctx, subID)
+			var data ManagedCluster
+			for _, d := range mc {
+
+				if d.Name == clusterName {
+					data = d
+					break
+				}
+			}
+			pvstate = data.ProvisionState
+		} else {
+			break
+		}
+		time.Sleep(time.Second * 3)
+	}
+
 	res, err := aksClient.CreateOrUpdate(
 		ctx,
 		resourceGroupName,
