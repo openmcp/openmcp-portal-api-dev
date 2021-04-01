@@ -175,12 +175,13 @@ func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
 	agentURL := body["agentURL"].(string)
 	targetvm := body["targetvm"].(string)
 	mastervm := body["mastervm"].(string)
+	mastervmpwd := body["mastervmpwd"].(string)
 
 	// fmt.Println(agentURL)
 	// fmt.Println(targetvm)
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/deletekvmnode?node=" + targetvm + "&mastervm=" + mastervm)
+	resp, err := client.Get("http://" + agentURL + ":10000/deletekvmnode?node=" + targetvm + "&mastervm=" + mastervm + "&mastervmpwd="+mastervmpwd)
 
 	if err != nil {
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
