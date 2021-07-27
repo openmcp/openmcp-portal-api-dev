@@ -16,7 +16,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -25,55 +26,39 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 	//get clusters Information
 	clusterNames := []string{}
-	//set master cluster info
-	clusterNames = append(clusterNames, "openmcp")
-	cluster := ClusterInfo{}
-	cluster.Name = "openmcp"
-	cluster.Provider = "aks"
-	cluster.Zones = "KR"
-	cluster.Region = "AS"
-	resCluster.Clusters = append(resCluster.Clusters, cluster)
 
 	for _, element := range clusterData["items"].([]interface{}) {
-		cluster := ClusterInfo{}
-		region := GetStringElement(element, []string{"status", "region"})
-		zones := GetStringElement(element, []string{"status", "zones"})
-		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		provider := "-"
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
-			cluster.Name = clusterName
+		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
 
-			// if 조건으로 테스트용 Provider 입력해보자
-			if clusterName == "cluster1" {
-				provider = "eks"
-			} else if clusterName == "cluster2" {
-				provider = "kvm"
-			} else if clusterName == "openmcp" {
-				provider = "aks"
-			} else {
-				provider = "-"
+		if joinStatus == "JOIN" {
+			clusterName := GetStringElement(element, []string{"metadata", "name"})
+			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+
+			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+			go CallAPI(token, clusterurl, ch)
+			clusters := <-ch
+			clusterData := clusters.data
+
+			cluster := ClusterInfo{}
+			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+				cluster.Name = clusterName
+				cluster.Provider = provider
+
+				// // if 조건으로 테스트용 Provider 입력해보자
+				// if clusterName == "cluster1" {
+				// 	provider = "On-Premis" //>>> KVM이라고할꺼임
+				// } else if clusterName == "cluster2" {
+				// 	provider = "GKE"
+				// } else if clusterName == "openmcp" {
+				// 	provider = "AKS"
+				// } else {
+				// 	provider = "EKS"
+				// }
+				resCluster.Clusters = append(resCluster.Clusters, cluster)
 			}
-			
-			cluster.Provider = provider
-			cluster.Zones = zones
-			cluster.Region = region
-			resCluster.Clusters = append(resCluster.Clusters, cluster)
 		}
-
-		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-		// statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
-
-		// clusterStatus := "Healthy"
-		// if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-		// 	clusterStatus = "Unhealthy"
-		// } else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-		// 	clusterStatus = "Healthy"
-		// } else {
-		// 	clusterStatus = "Unknown"
-		// }
 	}
 
 	for i, cluster := range resCluster.Clusters {
@@ -81,7 +66,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		cluster.Status = "Healthy"
 
 		// get node names, cpu(capacity)
-		nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
@@ -97,6 +82,15 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
+			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+
+			if isMaster != "-" && isMaster == "" {
+				zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+				region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+				resCluster.Clusters[i].Zones = zone
+				resCluster.Clusters[i].Region = region
+			}
+
 			nodeName := GetStringElement(element, []string{"metadata", "name"})
 			// fmt.Println(nodeName)
 			status := ""
@@ -139,7 +133,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			cpuCapSum += cpuCapInt
 			memoryCapSum += memoryCapInt
 
-			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
 			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name)
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
@@ -242,25 +236,50 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 		// fmt.Println(fsUseSumS, fsCapSumS)
 
+		var cpuStatus []NameVal
+		var memStatus []NameVal
+		var fsStatus []NameVal
+
+		cpuStatus = append(cpuStatus, NameVal{"Used", cpuUseSumF})
+		cpuStatus = append(cpuStatus, NameVal{"Total", float64(cpuCapSum)})
+		cpuUnit := Unit{"core", cpuStatus}
+
+		memStatus = append(memStatus, NameVal{"Used", memoryUseSumF})
+		memStatus = append(memStatus, NameVal{"Total", memoryCapSumF})
+		memUnit := Unit{"Gi", memStatus}
+
+		fsStatus = append(fsStatus, NameVal{"Used", fsUseSumF})
+		if fsCapSumF == 0 {
+			fsCapSumF = 100.0
+		}
+		fsStatus = append(fsStatus, NameVal{"Total", fsCapSumF})
+		fsUnit := Unit{"Gi", fsStatus}
+
+		resUsage := ClusterResourceUsage{cpuUnit, memUnit, fsUnit}
+
 		resCluster.Clusters[i].Nodes = len(nodeItems)
 		resCluster.Clusters[i].Cpu = cpuUseSumS + "/" + strconv.Itoa(cpuCapSum) + " Core"
 		resCluster.Clusters[i].Ram = memoryUseSumS + "/" + memoryCapSumS + " Gi"
 		resCluster.Clusters[i].Disk = PercentUseString(fsUseSumS, fsCapSumS) + "%"
 		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
+		resCluster.Clusters[i].ResourceUsage = resUsage
 	}
 	// fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
 func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	// w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	// w.WriteHeader(http.StatusOK)
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	url := "http://" + openmcpURL + "/joinable"
-	go CallAPI(token, url, ch)
+	// url := "https://" + openmcpURL + "/joinable" //못쓴다 이제... 전체 cluster검색후 metadata : joinStatus: UNJOIN인것들만 모아서 뿌려야함.
+
+	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+
+	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
@@ -273,16 +292,36 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var joinableLists []joinable
+
 	if clusterData["items"] != nil {
 		for _, element := range clusterData["items"].([]interface{}) {
-			name := element.(map[string]interface{})["name"].(string)
-			endpoint := element.(map[string]interface{})["endpoint"].(string)
-			provider := element.(map[string]interface{})["platform"].(string)
-			region := element.(map[string]interface{})["region"].(string)
-			zone := element.(map[string]interface{})["zone"].(string)
+			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+			if joinStatus == "UNJOIN" {
+				clusterName := GetStringElement(element, []string{"metadata", "name"})
+				// endpoint := element.(map[string]interface{})["endpoint"].(string)
+				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+				region := "-"
+				zone := "-"
+				endpoint := GetStringElement(element, []string{"spec", "apiEndpoint"})
 
-			res := joinable{name, endpoint, provider, region, zone}
-			joinableLists = append(joinableLists, res)
+				nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+				go CallAPI(token, nodeURL, ch)
+				nodeResult := <-ch
+				nodeData := nodeResult.data
+				nodeItems := nodeData["items"].([]interface{})
+
+				for _, element := range nodeItems {
+					isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+
+					if isMaster != "-" && isMaster == "" {
+						zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+						region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+					}
+				}
+
+				res := joinable{clusterName, endpoint, provider, region, zone}
+				joinableLists = append(joinableLists, res)
+			}
 		}
 		json.NewEncoder(w).Encode(joinableLists)
 	} else {
@@ -296,6 +335,38 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		errorMSG := jsonErr{500, "failed", "need some params"}
 		json.NewEncoder(w).Encode(errorMSG)
 	} else {
+		ch := make(chan Resultmap)
+		token := GetOpenMCPToken()
+
+		clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clusterNm + "?clustername=openmcp"
+		// https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
+
+		// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster1?clustername=openmcp
+
+		go CallAPI(token, clusterurl, ch)
+		clusters := <-ch
+		clusterData := clusters.data
+
+		//get clusters Information
+		// clusterNames := []string{}
+		//set master cluster info
+		// clusterNames = append(clusterNames, "openmcp")
+		region := "-"
+		zone := "-"
+		provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+
+		// region = GetStringElement(clusterData["status"], []string{"region"})
+		// zone = GetStringElement(clusterData["status"], []string{"zones"})
+		// if clusterNm == "cluster1" {
+		// 	provider = "eks"
+		// } else if clusterNm == "cluster2" {
+		// 	provider = "kvm"
+		// } else if clusterNm == "openmcp" {
+		// 	provider = "aks"
+		// } else {
+		// 	provider = "-"
+		// }
+
 		// GetInfluxNodesMetric()
 		InitInfluxConfig()
 		inf := NewInflux(InfluxConfig.Influx.Ip, InfluxConfig.Influx.Port, InfluxConfig.Influx.Username, InfluxConfig.Influx.Username)
@@ -341,10 +412,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		ch := make(chan Resultmap)
-		token := GetOpenMCPToken()
-
-		nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterNm
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterNm
 		go CallAPI(token, nodeURL, ch)
 
 		nodeResult := <-ch
@@ -367,6 +435,11 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		var nodeNameList []string
 		var kubeVersion string
 		for _, element := range nodeItems {
+			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+			if isMaster != "-" && isMaster == "" {
+				zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+				region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+			}
 
 			status := element.(map[string]interface{})["status"]
 			var healthCheck = make(map[string]string)
@@ -399,7 +472,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			clusterCPUCapSum += cpuCapInt
 			clusterMemoryCapSum += memoryCapInt
 
-			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterNm
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterNm
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
 			clMetricData := clMetricResult.data
@@ -449,8 +522,8 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 					fsCapaUse = strings.Split(fsCapaUse, "Ki")[0]
 					fsCapaUseInt, _ := strconv.Atoi(fsCapaUse)
 
-					nodeResCPU[nodeName] = float64(cpuUseInt)
-					nodeResMem[nodeName] = float64(memoryUseInt) / 1000
+					nodeResCPU[nodeName] = math.Ceil((float64(cpuUseInt)/1000/1000/1000)*10000) / 10000
+					nodeResMem[nodeName] = math.Ceil((float64(memoryUseInt)/1000/1000)*10000) / 10000
 
 					nodeResCPUSum += nodeResCPU[nodeName]
 					nodeResMemSum += nodeResMem[nodeName]
@@ -475,24 +548,25 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 		// fmt.Println(clusterCPURank, clusterMemRank)
 
-		for _, r := range nodeNameList {
-			nodeCPUPecent := PercentChange(float64(nodeResCPU[r]), float64(clusterCPUCapSum))
-			nodeResCPU[r] = math.Ceil(nodeCPUPecent*100) / 100
-		}
+		// for _, r := range nodeNameList {
+		// 	nodeCPUPecent := PercentChange(float64(nodeResCPU[r]), float64(clusterCPUCapSum))
+		// 	nodeResCPU[r] = math.Ceil(nodeCPUPecent*100) / 100
+		// }
 
 		nodeCPURank := reverseRank(nodeResCPU, 5)
 		nodeMemRank := reverseRank(nodeResMem, 5)
-		// fmt.Println(nodeCPURank, nodeMemRank)
+
 		// nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
 		nodeResCPUSumStr := nodeResCPUSum / 1000 / 1000 / 1000
 		// nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
-		nodeResMemSumStr := nodeResMemSum / 1000
+		nodeResMemSumStr := nodeResMemSum / 1000 / 1000 //Gi
 		// nodeResFSSumStr := fmt.Sprintf("%.1f", float64(nodeResFSSum)/1000/1000)
 		nodeResFSSumStr := float64(nodeResFSSum) / 1000 / 1000
 		// nodeResFSCapaSumStr := fmt.Sprintf("%.1f", float64(nodeResFSCapaSum)/1000/1000)
 		nodeResFSCapaSumStr := float64(nodeResFSCapaSum) / 1000 / 1000
 		// fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
 
+		//cat ~/.kube/config > config (copy and paste)
 		config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
 		clientset, _ := kubernetes.NewForConfig(config)
 		compStatus, _ := clientset.CoreV1().ComponentStatuses().List(v1.ListOptions{})
@@ -506,7 +580,6 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 
 		var kubeStatus []NameStatus
 
-		clusterStatus := "Healthy"
 		for _, r := range compStatus.Items {
 			name := r.Name
 			conType := r.Conditions
@@ -517,7 +590,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 					state = "Healthy"
 				} else {
 					state = "Unhealthy"
-					clusterStatus = "Unhealthy"
+					// clusterStatus = "Unhealthy"
 				}
 			}
 
@@ -528,14 +601,12 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			} else if strings.Contains(name, "controller-manager") {
 				name = "Controller Manager"
 			}
-
 			kubeStatus = append(kubeStatus, NameStatus{name, state})
-
 		}
 		// fmt.Println(kubeStatus)
 		kubeStatus = append(kubeStatus, NameStatus{"Nodes", nodeStatus})
 
-		eventsURL := "http://" + openmcpURL + "/api/v1/events?clustername=" + clusterNm
+		eventsURL := "https://" + openmcpURL + "/api/v1/events?clustername=" + clusterNm
 		go CallAPI(token, eventsURL, ch)
 		eventsResult := <-ch
 		eventsData := eventsResult.data
@@ -571,7 +642,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		memUnit := Unit{"Gi", memStaus}
 		fsUnit := Unit{"Gi", fsStaus}
 		cUsage := ClusterResourceUsage{cpuUnit, memUnit, fsUnit}
-		info := BasicInfo{clusterNm, "-", kubeVersion, clusterStatus}
+		info := BasicInfo{clusterNm, provider, kubeVersion, nodeStatus, region, zone}
 
 		pUsageTop5 := ProjectUsageTop5{clusterCPURank, clusterMemRank}
 		nUsageTop5 := NodeUsageTop5{nodeCPURank, nodeMemRank}

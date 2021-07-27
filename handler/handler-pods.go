@@ -13,7 +13,7 @@ func GetPods(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	clusterURL := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterURL, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -32,7 +32,7 @@ func GetPods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, clusterName := range clusterNames {
-		podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+		podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 		podResult := <-ch
 		podData := podResult.data
@@ -90,7 +90,7 @@ func GetPodsInCluster(w http.ResponseWriter, r *http.Request) {
 	clusterName := vars["clusterName"]
 	resPod := PodRes{}
 
-	podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -147,7 +147,7 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 
 	var allUrls []string
 
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -158,7 +158,7 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, cluster := range clusternames {
-		vpaURL := "http://" + openmcpURL + "/apis/autoscaling.k8s.io/v1beta2/verticalpodautoscalers?clustername=" + cluster
+		vpaURL := "https://" + openmcpURL + "/apis/autoscaling.k8s.io/v1beta2/verticalpodautoscalers?clustername=" + cluster
 		allUrls = append(allUrls, vpaURL)
 	}
 
@@ -203,7 +203,7 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 
 	var allUrls []string
 
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -216,7 +216,7 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 	clusternames = append(clusternames, "openmcp")
 
 	for _, cluster := range clusternames {
-		hpaURL := "http://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
+		hpaURL := "https://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
 		allUrls = append(allUrls, hpaURL)
 	}
 
@@ -270,7 +270,7 @@ func GetPodsInProject(w http.ResponseWriter, r *http.Request) {
 	resPod := PodRes{}
 
 	// http: //192.168.0.152:31635/api/v1/namespaces/kube-system/pods?clustername=cluster2
-	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -335,7 +335,7 @@ func GetPodOverview(w http.ResponseWriter, r *http.Request) {
 		token := GetOpenMCPToken()
 		// http://192.168.0.152:31635/api/v1/namespaces/{namespace}/pods/{podname}?clustername={clustername}
 
-		podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods/" + podName + "?clustername=" + clusterName
+		podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods/" + podName + "?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 
 		podResult := <-ch
@@ -423,7 +423,7 @@ func GetPodOverview(w http.ResponseWriter, r *http.Request) {
 			podMetric := GetInfluxPod10mMetric(clusterName, projectName, podName)
 
 			// http://192.168.0.152:31635/api/v1/namespaces/{namespace}/events?clustername={clustername}
-			podEventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+			podEventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 
 			// go CallAPI(token, podEventURL, ch)
 

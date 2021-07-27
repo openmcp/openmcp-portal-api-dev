@@ -25,7 +25,7 @@ func GetVolumes(w http.ResponseWriter, r *http.Request) {
 
 	resVolume := VolumeRes{}
 	volume := VolumeInfo{}
-	volumeURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/persistentvolumeclaims?clustername=" + clusterName
+	volumeURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/persistentvolumeclaims?clustername=" + clusterName
 
 	go CallAPI(token, volumeURL, ch)
 
@@ -65,7 +65,7 @@ func GetVolumeOverview(w http.ResponseWriter, r *http.Request) {
 
 	resVolumeOverview := VolumeOverview{}
 	volume := VolumeInfo{}
-	volumeURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/persistentvolumeclaims/" + volumeName + "?clustername=" + clusterName
+	volumeURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/persistentvolumeclaims/" + volumeName + "?clustername=" + clusterName
 
 	// fmt.Println(volumeURL)
 	go CallAPI(token, volumeURL, ch)
@@ -110,7 +110,7 @@ func GetVolumeOverview(w http.ResponseWriter, r *http.Request) {
 	resPod := PodRes{}
 
 	// http: //192.168.0.152:31635/api/v1/namespaces/kube-system/pods?clustername=cluster2
-	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -181,7 +181,7 @@ func GetVolumeOverview(w http.ResponseWriter, r *http.Request) {
 
 	//Events
 	// http://192.168.0.152:31635/api/v1/namespaces/ingress-nginx/events?clustername=cluster1
-	eventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+	eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 
 	go CallAPI(token, eventURL, ch)
 	eventResult := <-ch

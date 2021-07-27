@@ -224,6 +224,12 @@ var routes = Routes{
 		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}",
 		handler.GetDeploymentOverview,
 	},
+	Route{
+		"replicaStatus",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}/replica_status",
+		handler.GetDeploymentReplicaStatus,
+	},
 
 	Route{
 		"statefulsets",

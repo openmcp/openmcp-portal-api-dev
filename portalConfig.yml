@@ -1,7 +1,8 @@
 portal:
     openmcpurl: 192.168.0.152
-    port:       31635
+    port:       30000
     kubeconfig: config   
+# 31635
     
 
     

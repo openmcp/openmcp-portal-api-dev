@@ -16,52 +16,63 @@ type NodeClusters struct {
 }
 
 type NodeCluster struct {
-	Name   string `json:"name"`
-	Region string `json:"region"`
-	Zones  string `json:"zone"`
+	Name string `json:"name"`
+	// Region   string `json:"region"`
+	// Zones    string `json:"zone"`
+	Provider   string `json:"provider"`
+	JoinStatus string `json:"joinStatus"`
 }
 
 func Nodes(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	clusterURL := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	// clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
 	go CallAPI(token, clusterURL, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
-	resNode := NodeRes{}
-	podsCount := make(map[string]int)
-	provider := "-"
+	clusterNames := []string{}
 
+	resNode := NodeRes{}
 	nodeClusters := NodeClusters{}
 	nodeCluster := NodeCluster{}
 
-	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	podsCount := make(map[string]int)
 
-	nodeCluster.Name = "openmcp"
-	nodeCluster.Zones = "KR"
-	nodeCluster.Region = "AS"
-	nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
+	/////////////////////////////////////////////////////////////////////////////
+	// ㅇ openmcp cluster를 볼 필요가 있나???
+	// clusterNames = append(clusterNames, "openmcp")
+	// nodeCluster.Name = "openmcp"
+	// nodeCluster.Zones = "KR"
+	// nodeCluster.Region = "AS"
+	// nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
+	/////////////////////////////////////////////////////////////////////////////
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		// provider := GetStringElement(element, []string{"metadata", "provider"})
+		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+		if joinStatus == "JOIN" {
+			clusterName := GetStringElement(element, []string{"metadata", "name"})
+			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+			// provider := GetStringElement(element, []string{"metadata", "provider"})
+			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+			go CallAPI(token, clusterurl, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		clusterRegion := GetStringElement(element, []string{"status", "region"})
-		clusterZones := GetStringElement(element, []string{"status", "zones"})
+			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 
-		if clusterType == "Ready" {
-			nodeCluster.Name = clusterName
-			nodeCluster.Region = clusterRegion
-			nodeCluster.Zones = clusterZones
+			if clusterType == "Ready" {
+				nodeCluster.Name = clusterName
+				nodeCluster.Provider = provider
+				nodeCluster.JoinStatus = joinStatus
 
-			nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
-			clusterNames = append(clusterNames, clusterName)
+				nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
 	}
 
@@ -69,8 +80,8 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 	for _, nodeCluster := range nodeClusters.Clusters {
 		node := NodeInfo{}
 		// get node names, cpu(capacity)
-		// nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
-		nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + nodeCluster.Name
+		// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + nodeCluster.Name
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
@@ -135,8 +146,8 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			containerRuntimeVersion := GetStringElement(element, []string{"status", "nodeInfo", "containerRuntimeVersion"})
 			// element.(map[string]interface{})["status"].(map[string]interface{})["nodeInfo"].(map[string]interface{})["containerRuntimeVersion"].(string)
 
-			clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + nodeCluster.Name
-			// clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + nodeCluster.Name
+			// clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
 			// clMetricURL := "http://192.168.0.152:31635/metrics/nodes/clusterd-worker1.dev.gmd.life?clustername=cluster2"
 
 			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
@@ -175,14 +186,14 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// if 조건으로 테스트용 Provider 입력해보자
-			if nodeCluster.Name == "cluster1" {
-				provider = "eks"
-			} else if nodeCluster.Name == "cluster2" {
-				provider = "kvm"
-			} else if nodeCluster.Name == "openmcp" {
-				provider = "aks"
-			}
+			// // if 조건으로 테스트용 Provider 입력해보자
+			// if nodeCluster.Name == "cluster1" {
+			// 	provider = "eks"
+			// } else if nodeCluster.Name == "cluster2" {
+			// 	provider = "kvm"
+			// } else if nodeCluster.Name == "openmcp" {
+			// 	provider = "aks"
+			// }
 
 			node.Name = nodeName
 			node.Cluster = nodeCluster.Name
@@ -193,15 +204,16 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + " Core"
 			node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + " GIB"
 			node.Pods = podsCapacity
-			node.Provider = provider
-			node.Region = nodeCluster.Region
+			node.Provider = nodeCluster.Provider
+			node.Zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+			node.Region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
 
 			resNode.Nodes = append(resNode.Nodes, node)
 		}
 
 		//pods counts by nodename
-		podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + nodeCluster.Name
-		// podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+		podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + nodeCluster.Name
+		// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 		podResult := <-ch
 		podData := podResult.data
@@ -249,12 +261,19 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 	clusterName := vars["clusterName"]
 	// fmt.Println(clusterName)
 
+	clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clusterName + "?clustername=openmcp"
+	go CallAPI(token, clusterURL, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+
+	provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+
 	resNode := NodeRes{}
 	node := NodeInfo{}
 	podsCount := make(map[string]int)
 
 	// get node names, cpu(capacity)
-	nodeURL := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+	nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 	go CallAPI(token, nodeURL, ch)
 	nodeResult := <-ch
 	nodeData := nodeResult.data
@@ -318,7 +337,7 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 		containerRuntimeVersion := GetStringElement(element, []string{"status", "nodeInfo", "containerRuntimeVersion"})
 		// element.(map[string]interface{})["status"].(map[string]interface{})["nodeInfo"].(map[string]interface{})["containerRuntimeVersion"].(string)
 
-		clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+		clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
 
 		// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
 
@@ -367,12 +386,15 @@ func NodesInCluster(w http.ResponseWriter, r *http.Request) {
 		node.Cpu = PercentUseString(cpuUse, cpuCapacity) + "%" + "|" + cpuUse + " / " + cpuCapacity + " Core"
 		node.Ram = PercentUseString(memoryUse, memoryCapacity) + "%" + "|" + memoryUse + " / " + memoryCapacity + " GIB"
 		node.Pods = podsCapacity
+		node.Provider = provider
+		node.Zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+		node.Region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
 
 		resNode.Nodes = append(resNode.Nodes, node)
 	}
 
 	//pods counts by nodename
-	podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -424,7 +446,7 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 		token := GetOpenMCPToken()
 
 		// http://192.168.0.152:31635/api/v1/nodes/cluster1-worker1.dev.gmd.life?clustername=cluster1
-		nodeURL := "http://" + openmcpURL + "/api/v1/nodes/" + nodeName + "?clustername=" + clusterName
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes/" + nodeName + "?clustername=" + clusterName
 		go CallAPI(token, nodeURL, ch)
 
 		nodeResult := <-ch
@@ -498,7 +520,7 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 		memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 		memoryCapFloat, _ := strconv.ParseFloat(memoryCapacity, 64)
 
-		clMetricURL := "http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+		clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
 		go CallAPI(token, clMetricURL, ch)
 		clMetricResult := <-ch
 		clMetricData := clMetricResult.data
@@ -559,7 +581,7 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 		podCapaUseCount, _ := strconv.ParseFloat(podsCapacity, 64)
 
 		podUseCount := 0
-		podURL := "http://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+		podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 		podResult := <-ch
 		podData := podResult.data

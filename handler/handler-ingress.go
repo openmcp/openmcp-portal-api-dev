@@ -12,7 +12,7 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -32,7 +32,7 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 
 	for _, clusterName := range clusterNames {
 		ingress := IngerssInfo{}
-		ingressURL := "http://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + clusterName
+		ingressURL := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + clusterName
 		go CallAPI(token, ingressURL, ch)
 		ingressResult := <-ch
 		ingressData := ingressResult.data
@@ -68,8 +68,8 @@ func GetIngressInProject(w http.ResponseWriter, r *http.Request) {
 
 	resIngress := IngerssRes{}
 	ingress := IngerssInfo{}
-	// "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?
-	ingressURL := "http://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/namespaces/" + projectName + "/ingresses?clustername=" + clusterName
+	// "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?
+	ingressURL := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/namespaces/" + projectName + "/ingresses?clustername=" + clusterName
 
 	go CallAPI(token, ingressURL, ch)
 
@@ -108,8 +108,8 @@ func GetIngressOverview(w http.ResponseWriter, r *http.Request) {
 	resIngressOverView := IngressOverView{}
 	ingress := IngerssInfo{}
 
-	// "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?
-	ingressURL := "http://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/namespaces/" + projectName + "/ingresses/" + ingressName + "?clustername=" + clusterName
+	// "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?
+	ingressURL := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/namespaces/" + projectName + "/ingresses/" + ingressName + "?clustername=" + clusterName
 
 	go CallAPI(token, ingressURL, ch)
 
@@ -172,7 +172,7 @@ func GetIngressOverview(w http.ResponseWriter, r *http.Request) {
 
 	//events
 	// http://192.168.0.152:31635/api/v1/namespaces/ingress-nginx/events?clustername=cluster1
-	eventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+	eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 
 	go CallAPI(token, eventURL, ch)
 	eventResult := <-ch

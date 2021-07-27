@@ -23,7 +23,7 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 	// projectName := vars["projectName"]
 
 	// fmt.Println(clustrName, projectName)
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -46,7 +46,7 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 	for _, clusterName := range clusterNames {
 		service := ServiceInfo{}
 
-		dnsURL := "http://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + clusterName
+		dnsURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + clusterName
 		go CallAPI(token, dnsURL, ch)
 		dnsResult := <-ch
 		dnsData := dnsResult.data

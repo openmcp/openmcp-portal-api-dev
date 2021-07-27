@@ -18,7 +18,7 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 	// projectName := vars["projectName"]
 
 	// fmt.Println(clustrName, projectName)
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -40,7 +40,7 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 	for _, clusterName := range clusterNames {
 		deployment := DeploymentInfo{}
 		// get node names, cpu(capacity)
-		deploymentURL := "http://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
+		deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
 		go CallAPI(token, deploymentURL, ch)
 		deploymentResult := <-ch
 		// fmt.Println(deploymentResult)
@@ -108,7 +108,7 @@ func GetDeploymentsInProject(w http.ResponseWriter, r *http.Request) {
 	deployment := DeploymentInfo{}
 	// get node names, cpu(capacity)
 	// http: //192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/deployments?clustername=cluster1
-	deploymentURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
 	go CallAPI(token, deploymentURL, ch)
 	deploymentResult := <-ch
 	// fmt.Println(deploymentResult)
@@ -178,7 +178,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	deployment := DeploymentInfo{}
 	// get node names, cpu(capacity)
 	// http: //192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/deployments?clustername=cluster1
-	deploymentURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments/" + deploymentName + "?clustername=" + clusterName
+	deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments/" + deploymentName + "?clustername=" + clusterName
 	go CallAPI(token, deploymentURL, ch)
 	deploymentResult := <-ch
 	// fmt.Println(deploymentResult)
@@ -238,7 +238,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 
 	// replicasets
 	// http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-	replURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterName
+	replURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterName
 	go CallAPI(token, replURL, ch)
 	replResult := <-ch
 	// fmt.Println(deploymentResult)
@@ -262,7 +262,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	// find pods within deployments
 	// replicasets
 	// http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -345,7 +345,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//events
-	eventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+	eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 	go CallAPI(token, eventURL, ch)
 	eventResult := <-ch
 	eventData := eventResult.data
@@ -372,4 +372,38 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(resDeploymentOverview)
+}
+
+func GetDeploymentReplicaStatus(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	vars := mux.Vars(r)
+	cluster := vars["clusterName"]
+	projectName := vars["projectName"]
+	deploymentName := vars["deploymentName"]
+
+	resReplicaStatus := ReplicaStatus{}
+	// http://192.168.0.152:31635/apis/apps/v1/namespaces/openmcp/deployments/openmcp-deployment3?clustername=cluster1
+	deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments/" + deploymentName + "?clustername=" + cluster
+
+	fmt.Println(deploymentURL)
+	go CallAPI(token, deploymentURL, ch)
+	deploymentResult := <-ch
+	deploymentData := deploymentResult.data
+
+	// get deployement Information
+	namespace := GetStringElement(deploymentData, []string{"metadata", "namespace"})
+
+	// unavailableReplicas := GetFloat64Element(deploymentData, []string{"status", "unavailableReplicas"})
+	readyReplicas := GetFloat64Element(deploymentData, []string{"status", "readyReplicas"})
+	replicas := GetFloat64Element(deploymentData, []string{"status", "replicas"})
+
+	resReplicaStatus.Cluster = cluster
+	resReplicaStatus.Project = namespace
+	resReplicaStatus.Deployment = deploymentName
+	resReplicaStatus.Replicas = int(replicas)
+	resReplicaStatus.ReadyReplicas = int(readyReplicas)
+
+	json.NewEncoder(w).Encode(resReplicaStatus)
 }

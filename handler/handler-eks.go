@@ -70,7 +70,7 @@ func StopEKSNode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("targetID", targetID, targetASG)
+	// fmt.Println("targetID", targetID, targetASG)
 	input := &autoscaling.EnterStandbyInput{
 		AutoScalingGroupName: aws.String(targetASG),
 		InstanceIds: []*string{
@@ -170,7 +170,7 @@ func StartEKSNode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("targetID", targetID, targetASG)
+	// fmt.Println("targetID", targetID, targetASG)
 
 	input := &autoscaling.ExitStandbyInput{
 		AutoScalingGroupName: aws.String(targetASG),
@@ -272,7 +272,7 @@ func ChangeEKSInstanceType(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// enter standby
-	fmt.Println("targetID", targetID, targetASG)
+	// fmt.Println("targetID", targetID, targetASG)
 	input := &autoscaling.EnterStandbyInput{
 		AutoScalingGroupName: aws.String(targetASG),
 		InstanceIds: []*string{

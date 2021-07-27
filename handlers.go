@@ -21,7 +21,7 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	clusterurl := "http://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/migrations?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/migrations?clustername=openmcp"
 	resp, err := PostYaml(clusterurl, r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -53,13 +53,12 @@ func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
 	// // akid := "AKIAVJTB7UPJPEMHUAJR"
 	// // secretkey := "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" //
 
-	data:=GetJsonBody(r.Body)
+	data := GetJsonBody(r.Body)
 	defer r.Body.Close() // 리소스 누출 방지
 
 	region := data["region"].(string)
 	akid := data["accessKey"].(string)
 	secretkey := data["secretKey"].(string)
-	
 
 	sess, err := session.NewSession(&aws.Config{
 		// Region:      aws.String("	ap-northeast-2"), //
@@ -182,7 +181,7 @@ func ChangeEKSnode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	successmsg := jsonErr{200, "success", addResult.String()}
-	fmt.Println(addResult)
+	// fmt.Println(addResult)
 	json.NewEncoder(w).Encode(successmsg)
 
 }
@@ -214,12 +213,22 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	var allUrls []string
 
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
+	// clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster1?clustername=openmcp" //provider, joined 여부
+
+	//https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
+	// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp
+	// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster1?clustername=openmcp
+
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
 	resCluster := DashboardRes{}
+
+	resJoinedClusters := JoinedClusters{}
+	resJoinedClusters.Name = "OMCP-Master"
+
 	var clusterlist = make(map[string]Region)
 	var clusternames []string
 	clusterHealthyCnt := 0
@@ -227,14 +236,20 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	clusterUnknownCnt := 0
 	for _, element := range clusterData["items"].([]interface{}) {
 		// fmt.Println("element : ", element)
-		region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
+		region := GetStringElement(element, []string{"status", "zones"})
+		zone := "Seoul" //todo Zone관련 데이터 필요 (openmcp)
+		// region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
 		// if index > 0 {
 		// 	region = "US"
 		// }
+
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-		statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-		statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
+		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+		statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
+		statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+		// statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
+		statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
 		clusterStatus := "Healthy"
 
 		if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
@@ -247,13 +262,24 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 			clusterStatus = "Unknown"
 			clusterUnknownCnt++
 		}
+
+		clusterUrl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+		go CallAPI(token, clusterUrl, ch)
+		clusters := <-ch
+		clusterData := clusters.data
+		provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+		fmt.Println(joinStatus + " : " + provider)
 		// fmt.Println("##############", clusterlist)
 		// fmt.Println("##############", clusterlist[region])
+
 		clusterlist[region] =
 			Region{
 				region,
-				Attributes{clusterStatus},
-				append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus}})}
+				Attributes{clusterStatus, "", ""},
+				append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, "", ""}})}
+
+		resJoinedClusters.Children = append(resJoinedClusters.Children, ChildNode{clustername, Attributes{clusterStatus, zone, region}})
 		clusternames = append(clusternames, clustername)
 	}
 
@@ -262,11 +288,11 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, cluster := range clusternames {
-		nodeurl := "http://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster
+		nodeurl := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster
 		allUrls = append(allUrls, nodeurl)
-		podurl := "http://" + openmcpURL + "/api/v1/pods?clustername=" + cluster
+		podurl := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cluster
 		allUrls = append(allUrls, podurl)
-		projecturl := "http://" + openmcpURL + "/api/v1/namespaces?clustername=" + cluster
+		projecturl := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + cluster
 		allUrls = append(allUrls, projecturl)
 	}
 
@@ -295,7 +321,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	unknownNodeCnt := 0
 
 	for _, result := range results {
-
 		kind := result.(map[string]interface{})["kind"]
 
 		if kind == "NamespaceList" {
@@ -363,8 +388,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Healthy", clusterHealthyCnt})
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Unhealthy", clusterUnHealthyCnt})
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Unknown", clusterUnknownCnt})
+	resCluster.JoinedClusters = resJoinedClusters
 	json.NewEncoder(w).Encode(resCluster)
-
 }
 
 // func WorkloadsDeploymentsOverviewList(w http.ResponseWriter, r *http.Request) {

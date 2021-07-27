@@ -11,7 +11,9 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	clusterURL := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	// clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+
 	go CallAPI(token, clusterURL, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -30,7 +32,7 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, clusterName := range clusterNames {
-		projectURL := "http://" + openmcpURL + "/api/v1/namespaces?clustername=" + clusterName
+		projectURL := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + clusterName
 		go CallAPI(token, projectURL, ch)
 		projectResult := <-ch
 		projectData := projectResult.data
@@ -82,7 +84,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	resProjectOverview := ProjectOverview{}
 
-	projectURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "?clustername=" + clusterName
+	projectURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "?clustername=" + clusterName
 	go CallAPI(token, projectURL, ch)
 	projectResult := <-ch
 	projectData := projectResult.data
@@ -115,7 +117,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 	// Pods, Deployments, StatefulSets, DaemonSets, Jobs (count, UnhealthyCount)
 	// 1.pod //////////////////////////////////////////////////////////
 	podResources := ProjectResourceType{}
-	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -133,7 +135,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	// 2.deployments //////////////////////////////////////////////////////////
 	deploymentResources := ProjectResourceType{}
-	deploymentURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
 	go CallAPI(token, deploymentURL, ch)
 	deploymentResult := <-ch
 	deploymentData := deploymentResult.data
@@ -152,7 +154,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	// 3.StatefulSets //////////////////////////////////////////////////////////
 	stateFulSetResources := ProjectResourceType{}
-	stateFulSetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets?clustername=" + clusterName
+	stateFulSetURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets?clustername=" + clusterName
 	go CallAPI(token, stateFulSetURL, ch)
 	stateFulSetResult := <-ch
 	stateFulSetData := stateFulSetResult.data
@@ -174,7 +176,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	// 4.DaemonSets //////////////////////////////////////////////////////////
 	daemonSetResources := ProjectResourceType{}
-	daemonSetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	daemonSetURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
 	go CallAPI(token, daemonSetURL, ch)
 	daemonSetResult := <-ch
 	daemonSetData := daemonSetResult.data
@@ -192,7 +194,7 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 
 	// 5.Jobs //////////////////////////////////////////////////////////
 	jobResources := ProjectResourceType{}
-	jobURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
+	jobURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments?clustername=" + clusterName
 	go CallAPI(token, jobURL, ch)
 	jobResult := <-ch
 	jobData := jobResult.data

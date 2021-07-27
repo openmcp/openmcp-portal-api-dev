@@ -25,7 +25,7 @@ func GetConfigmaps(w http.ResponseWriter, r *http.Request) {
 
 	resConfigmap := ConfigmapRes{}
 	configMap := ConfigmapInfo{}
-	configMapURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps?clustername=" + clusterName
+	configMapURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps?clustername=" + clusterName
 	// fmt.Println(configMapURL)
 
 	go CallAPI(token, configMapURL, ch)
@@ -77,7 +77,7 @@ func GetConfigmapOverView(w http.ResponseWriter, r *http.Request) {
 
 	resConfigmapOverView := ConfigmapOverView{}
 	configMap := ConfigmapInfo{}
-	configMapURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps/" + configmapName + "?clustername=" + clusterName
+	configMapURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/configmaps/" + configmapName + "?clustername=" + clusterName
 	// fmt.Println(configMapURL)
 
 	go CallAPI(token, configMapURL, ch)

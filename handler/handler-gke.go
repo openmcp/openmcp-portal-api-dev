@@ -140,7 +140,7 @@ func GKEChangeNodeCount(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	fmt.Println(nodePoolName, nodeCount)
+	// fmt.Println(nodePoolName, nodeCount)
 	client, ctx := GetGKEAuth(projectID, clientEmail, privateKey)
 	svc, err := container.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -158,11 +158,11 @@ func GKEChangeNodeCount(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	fmt.Println(zone, clusterName)
+	// fmt.Println(zone, clusterName)
 	req := container.SetNodePoolSizeRequest{
 		NodeCount: nodeCount,
 	}
-	fmt.Println(req)
+	// fmt.Println(req)
 	task, err := svc.Projects.Zones.Clusters.NodePools.SetSize(projectID, zone, clusterName, nodePoolName, &req).Do()
 	if err != nil {
 		fmt.Println(err)
@@ -178,7 +178,6 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 	// projectID := "just-advice-302807"
 	// clientEmail := ""
 	// privateKey := ""
-
 
 	data := GetJsonBody(r.Body)
 	defer r.Body.Close() // 리소스 누출 방지
@@ -201,12 +200,12 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 	// json.NewEncoder(w).Encode(lists)
 	var clusters []GKEClusterInfo
 	for _, v := range lists.Clusters {
-		fmt.Println(v.Name)
-		fmt.Println(v.CurrentNodeCount)
-		fmt.Println(v.Zone, v.Location)
+		// fmt.Println(v.Name)
+		// fmt.Println(v.CurrentNodeCount)
+		// fmt.Println(v.Zone, v.Location)
 		var Pools []GKENodePool
 		for _, n := range v.NodePools {
-			fmt.Println(n.Name, n.Config.MachineType, n.InitialNodeCount)
+			// fmt.Println(n.Name, n.Config.MachineType, n.InitialNodeCount)
 			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(n.InitialNodeCount, 10)}
 			Pools = append(Pools, Pool)
 		}

@@ -323,14 +323,14 @@ func AKSChangeVMSS(w http.ResponseWriter, r *http.Request) {
 	clusterName := data["cluster"].(string)
 	targetPool := data["poolName"].(string)
 
-	fmt.Println(clientID)
-	fmt.Println(clientSec)
-	fmt.Println(tenantID)
-	fmt.Println(subID)
-	fmt.Println(skuTierStr)
-	fmt.Println(skuNameStr)
-	fmt.Println(clusterName)
-	fmt.Println(targetPool)
+	// fmt.Println(clientID)
+	// fmt.Println(clientSec)
+	// fmt.Println(tenantID)
+	// fmt.Println(subID)
+	// fmt.Println(skuTierStr)
+	// fmt.Println(skuNameStr)
+	// fmt.Println(clusterName)
+	// fmt.Println(targetPool)
 	authorizer, ctx, err := AKSAuthorizer(clientID, clientSec, tenantID)
 	if err != nil {
 		fmt.Println("AKSAuth failed", err)
@@ -435,7 +435,7 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	var clusterData ManagedCluster
 
 	for _, d := range mc {
-		fmt.Println(clusterName, d.Name)
+		// fmt.Println(clusterName, d.Name)
 		if d.Name == clusterName {
 			clusterData = d
 			break
@@ -449,12 +449,12 @@ func AddAKSnode(w http.ResponseWriter, r *http.Request) {
 	resourceGroupName := clusterData.ResourceGroup
 	resourceName := clusterName
 	location := clusterData.Location
-	fmt.Println("==========================")
-	fmt.Println(clusterData.ProvisionState)
+	// fmt.Println("==========================")
+	// fmt.Println(clusterData.ProvisionState)
 	pvstate := clusterData.ProvisionState
 
 	for i := 0; i < 100; i++ {
-		fmt.Println(pvstate)
+		// fmt.Println(pvstate)
 		if pvstate != "Succeeded" {
 			mc := AKSClusterInfo(authorizer, ctx, subID)
 			var data ManagedCluster

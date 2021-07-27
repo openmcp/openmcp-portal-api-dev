@@ -13,7 +13,7 @@ func GetKVMNodes(w http.ResponseWriter, r *http.Request) {
 	agentURL := r.URL.Query().Get("agenturl")
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/getkvmlists")
+	resp, err := client.Get("https://" + agentURL + ":10000/getkvmlists")
 	if err != nil {
 		json.NewEncoder(w).Encode(err)
 	}
@@ -43,7 +43,7 @@ func StartKVMNode(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(nodeName)
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/kvmstartnode?node=" + nodeName)
+	resp, err := client.Get("https://" + agentURL + ":10000/kvmstartnode?node=" + nodeName)
 	if err != nil {
 
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
@@ -75,7 +75,7 @@ func StopKVMNode(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(nodeName)
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/kvmstopnode?node=" + nodeName)
+	resp, err := client.Get("https://" + agentURL + ":10000/kvmstopnode?node=" + nodeName)
 	if err != nil {
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
 		json.NewEncoder(w).Encode(errorJson)
@@ -106,7 +106,7 @@ func ChangeKVMNode(w http.ResponseWriter, r *http.Request) {
 	memory := body["memory"].(string)
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/changekvmnode?node=" + nodeName + "&cpu=" + vCpu + "&mem=" + memory)
+	resp, err := client.Get("https://" + agentURL + ":10000/changekvmnode?node=" + nodeName + "&cpu=" + vCpu + "&mem=" + memory)
 
 	if err != nil {
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}
@@ -150,7 +150,7 @@ func CreateKVMNode(w http.ResponseWriter, r *http.Request) {
 	// template := r.URL.Query().Get("template")
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm + "&master=" + clusterMaster + "&mpass=" + mPass + "&wpass=" + wPass)
+	resp, err := client.Get("https://" + agentURL + ":10000/createkvmnode?template=" + template + "&newvm=" + newvm + "&master=" + clusterMaster + "&mpass=" + mPass + "&wpass=" + wPass)
 
 	if err != nil {
 		errorJson := jsonErr{500, "Agent Connect Fail", err.Error()}
@@ -181,7 +181,7 @@ func DeleteKVMNode(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(targetvm)
 
 	var client http.Client
-	resp, err := client.Get("http://" + agentURL + ":10000/deletekvmnode?node=" + targetvm + "&mastervm=" + mastervm + "&mastervmpwd="+mastervmpwd)
+	resp, err := client.Get("https://" + agentURL + ":10000/deletekvmnode?node=" + targetvm + "&mastervm=" + mastervm + "&mastervmpwd=" + mastervmpwd)
 
 	if err != nil {
 		errorJson := jsonErr{500, "agent connect fail", err.Error()}

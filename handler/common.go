@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,13 +32,35 @@ type Resultmap struct {
 	data map[string]interface{}
 }
 
-func GetOpenMCPToken() string {
-	var client http.Client
+type Account struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
-	resp, err := client.Get("http://" + openmcpURL + "/token?username=openmcp&password=keti")
+func GetOpenMCPToken() string {
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			// TLSClientConfig: &tls.Config{
+			// 	RootCAs: caCertPool,
+			// },
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	account := Account{"openmcp", "keti"}
+
+	pbytes, _ := json.Marshal(account)
+	buff := bytes.NewBuffer(pbytes)
+
+	// resp, err := client.Get("https://" + openmcpURL + "/token?username=openmcp&password=keti")
+	resp, err := client.Post("https://"+openmcpURL+"/token", "application/json", buff)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer resp.Body.Close()
 	var data map[string]interface{}
 	token := ""
@@ -49,7 +73,10 @@ func GetOpenMCPToken() string {
 		json.Unmarshal([]byte(bodyBytes), &data)
 		token = data["token"].(string)
 
+	} else {
+		fmt.Println("failed")
 	}
+
 	return token
 }
 
@@ -60,7 +87,12 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 
 	req.Header.Add("Authorization", bearer)
 	// Send req using http Client
-	var client http.Client
+	// var client http.Client
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -107,6 +139,7 @@ func GetInfluxPodsMetric(clusterName string, in *Influx) []client.Result {
 
 	//select last(*) from Pods where time > now() -1m and cluster='cluster1' group by namespace,pod,time(1m)
 	response, err := in.inClient.Query(q)
+	// fmt.Println(response)
 
 	if err == nil && response.Error() == nil {
 
@@ -132,7 +165,7 @@ func GetInfluxPod10mMetric(clusterName string, namespace string, pod string) Phy
 	token := GetOpenMCPToken()
 	// http://192.168.0.152:31635/metrics/namespaces/kube-system/pods/kube-flannel-ds-nn5p5?clustername=cluster1&timeStart=2020-09-03_09:00:00&timeEnd=2020-09-03_09:00:15
 
-	podMetricURL := "http://" + openmcpURL + "/metrics/namespaces/" + namespace + "/pods/" + pod + "?clustername=" + clusterName + "&timeStart=" + start + "&timeEnd=" + end
+	podMetricURL := "https://" + openmcpURL + "/metrics/namespaces/" + namespace + "/pods/" + pod + "?clustername=" + clusterName + "&timeStart=" + start + "&timeEnd=" + end
 
 	go CallAPI(token, podMetricURL, ch)
 
@@ -277,15 +310,23 @@ func GetInfluxDBPod10mMetric(clusterName string, projectName string) PhysicalRes
 	// start = "2020-12-16T10:21:00.0Z"
 	// end = "2020-12-16T10:32:00.0Z"
 
+	// client := &http.Client{
+	// 	Transport: &http.Transport{
+	// 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	// 	},
+	// }
+
 	q := client.Query{}
 	// t := time.Now().Format(time.RFC3339)
 	// select time, CPUUsageNanoCores as cpuUsage, MemoryUsageBytes as memoryUsage, NetworkRxBytes as Rx, NetworkTxBytes as Tx, pod  from Pods where time < '2020-12-16T10:31:00.0Z' and time > '2020-12-16T10:21:00.0Z' and cluster='cluster2' and namespace='ingress-nginx'
 	query := "select time, CPUUsageNanoCores as cpuUsage, MemoryUsageBytes as memoryUsage, NetworkRxBytes as Rx, NetworkTxBytes as Tx, pod from Pods where time < '" + end + "' and time > '" + start + "' and cluster='" + clusterName + "' and namespace='" + projectName + "' order by time asc"
 
-	// fmt.Println(query)
-
 	q = client.NewQuery(query, "Metrics", "")
-	response, _ := inf.inClient.Query(q)
+	response, err := inf.inClient.Query(q)
+
+	if err != nil {
+		fmt.Println("ERR : ", err)
+	}
 
 	// var queryResult []client.Result
 	queryResult := response.Results[0]
@@ -411,6 +452,11 @@ func GetInfluxDBPod10mMetric(clusterName string, projectName string) PhysicalRes
 
 func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 
+	nowTime := time.Now().UTC() //.Add(time.Duration(offset) * time.Second)
+	// startTime := nowTime.Add(time.Duration(-10) * time.Minute)
+	startTime := nowTime.Add(time.Duration(-5) * time.Minute)
+	start := startTime.Format("2006-01-02T15:04") + ":00.0Z"
+
 	var usageTop5 UsageTop5
 
 	InitInfluxConfig()
@@ -418,14 +464,22 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 
 	q := client.Query{}
 
-	query := "select time, last(CPUUsageNanoCores) as cpuUsage, MemoryUsageBytes as memoryUsage, namespace, cluster, pod  from Pods where cluster='" + clusterName + "' and namespace='" + projectName + "' group by pod"
+	query := "select time, last(CPUUsageNanoCores) as cpuUsage, MemoryUsageBytes as memoryUsage, namespace, cluster, pod  from Pods where cluster='" + clusterName + "' and namespace='" + projectName + "' and time > '" + start + "' group by pod"
 
 	fmt.Println(query)
 	q = client.NewQuery(query, "Metrics", "")
 	response, _ := inf.inClient.Query(q)
 
 	// var queryResult []client.Result
-	fmt.Println(response)
+	// fmt.Println(response)
+	if response == nil {
+		usageTop5.CPU = []UsageType{}
+		usageTop5.Memory = []UsageType{}
+
+		result := usageTop5
+		return result
+	}
+
 	queryResult := response.Results
 
 	if len(queryResult[0].Series) == 0 {
@@ -444,11 +498,20 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 				podName := ser.Tags["pod"]
 				cpuUsage.Name = podName
 				// cpuUsage.Type = podName
-				cpuUsage.Usage = strings.Split(value[1].(string), "n")[0]
+
+				intCpu, _ := strconv.Atoi(strings.Split(value[1].(string), "n")[0])
+				floatCpu := float64(intCpu) / 1000 / 1000 / 1000
+				strCpu := fmt.Sprintf("%.5g", floatCpu) + " core"
+				cpuUsage.Usage = strCpu
+				// cpuUsage.Usage = strings.Split(value[1].(string), "n")[0]
 
 				memUsage.Name = podName
 				// memUsage.Type = podName
-				memUsage.Usage = strings.Split(value[2].(string), "Ki")[0]
+				intMem, _ := strconv.Atoi(strings.Split(value[2].(string), "Ki")[0])
+				floatMem := float64(intMem) / 1000 / 1000 //Gi
+				strMem := fmt.Sprintf("%.5g", floatMem) + " Gi"
+				memUsage.Usage = strMem
+				// memUsage.Usage = strings.Split(value[2].(string), "Ki")[0]
 
 				usageTop5.CPU = append(usageTop5.CPU, cpuUsage)
 				usageTop5.Memory = append(usageTop5.Memory, memUsage)
@@ -457,10 +520,15 @@ func GetInfluxPodTop5(clusterName string, projectName string) UsageTop5 {
 	}
 
 	sort.Slice(usageTop5.CPU, func(i, j int) bool {
-		return usageTop5.CPU[i].Usage > usageTop5.CPU[j].Usage
+		a, _ := strconv.ParseFloat(strings.Split(usageTop5.CPU[i].Usage, " core")[0], 64)
+		b, _ := strconv.ParseFloat(strings.Split(usageTop5.CPU[j].Usage, " core")[0], 64)
+		return a > b
 	})
+
 	sort.Slice(usageTop5.Memory, func(i, j int) bool {
-		return usageTop5.Memory[i].Usage > usageTop5.Memory[j].Usage
+		a, _ := strconv.ParseFloat(strings.Split(usageTop5.Memory[i].Usage, " Gi")[0], 64)
+		b, _ := strconv.ParseFloat(strings.Split(usageTop5.Memory[j].Usage, " Gi")[0], 64)
+		return a > b
 	})
 
 	if len(usageTop5.CPU) > 5 {

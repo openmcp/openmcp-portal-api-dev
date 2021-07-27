@@ -7,6 +7,8 @@ type NameVal struct {
 
 type Attributes struct {
 	Status string `json:"status"`
+	Region string `json:"region"`
+	Zone   string `json:"zone"`
 	// Attributes struct {
 	// 	Status string `json:"status"`
 	// } `json:"attributes"`
@@ -17,6 +19,12 @@ type ChildNode struct {
 }
 
 type Region struct {
+	Name       string      `json:"name"`
+	Attributes Attributes  `json:"attributes"`
+	Children   []ChildNode `json:"children"`
+}
+
+type JoinedClusters struct {
 	Name       string      `json:"name"`
 	Attributes Attributes  `json:"attributes"`
 	Children   []ChildNode `json:"children"`
@@ -39,7 +47,8 @@ type DashboardRes struct {
 		ProjectsCnt    int       `json:"counts"`
 		ProjectsStatus []NameVal `json:"status"`
 	} `json:"projects"`
-	Regions []Region `json:"regions"`
+	Regions        []Region       `json:"regions"`
+	JoinedClusters JoinedClusters `json:"joined_clusters"`
 }
 
 type ManagedCluster struct {
@@ -74,3 +83,14 @@ type EKSCluster struct {
 	ClusterName string         `json:"name"`
 	Nodegroups  []EKSNodegroup `json:"nodegroups"`
 }
+
+// type ClusterData struct {
+// 	Name       string            `json:"name"`
+// 	attributes ClusterAttributes `json:"attributes`
+// }
+
+// type ClusterAttributes struct {
+// 	status string `json:"status"`
+// 	region string `json:"region"`
+// 	zone   string `json:"zone"`
+// }

@@ -5,16 +5,17 @@ type ClustersRes struct {
 }
 
 type ClusterInfo struct {
-	Name     string `json:"name"`
-	Region   string `json:"region"`
-	Zones    string `json:"zone"`
-	Status   string `json:"status"`
-	Provider string `json:"provider"`
-	Nodes    int    `json:"nodes"`
-	Cpu      string `json:"cpu"`
-	Ram      string `json:"ram"`
-	Disk     string `json:"disk"`
-	Network  string `json:"network"`
+	Name          string               `json:"name"`
+	Region        string               `json:"region"`
+	Zones         string               `json:"zone"`
+	Status        string               `json:"status"`
+	Provider      string               `json:"provider"`
+	Nodes         int                  `json:"nodes"`
+	Cpu           string               `json:"cpu"`
+	Ram           string               `json:"ram"`
+	Disk          string               `json:"disk"`
+	Network       string               `json:"network"`
+	ResourceUsage ClusterResourceUsage `json:"resourceUsage"`
 }
 
 type NodeRes struct {
@@ -32,6 +33,7 @@ type NodeInfo struct {
 	Pods          string `json:"pods"`
 	Provider      string `json:"provider"`
 	Region        string `json:"region"`
+	Zone          string `json:"zone"`
 }
 
 type NodeOverView struct {
@@ -164,6 +166,15 @@ type DeploymentOverview struct {
 	// ReplicaStatus     []ReplicaInfo     `json:"replica_status"`
 }
 
+type ReplicaStatus struct {
+	Cluster       string `json:"cluster"`
+	Project       string `json:"project"`
+	Deployment    string `json:"deployment"`
+	Replicas      int    `json:"replicas"`
+	ReadyReplicas int    `json:"ready_replicas"`
+	// UnavailableReplicas int    `unavailable_replicas`
+}
+
 type StatefulsetRes struct {
 	Statefulsets []StatefulsetInfo `json:"statefulsets"`
 }
@@ -211,6 +222,8 @@ type ServiceInfo struct {
 	Selector    string `json:"selector"`
 	Port        string `json:"port"`
 	CreatedTime string `json:"created_time"`
+	ClusterIP   string `json:"cluster_ip"`
+	ExternalIP  string `json:"external_ip"`
 }
 
 type ServiceOverview struct {
@@ -314,6 +327,8 @@ type BasicInfo struct {
 	Provider          string `json:"provider"`
 	KubernetesVersion string `json:"kubernetes_version"`
 	Status            string `json:"status"`
+	Region            string `json:"region"`
+	Zone              string `json:"zone"`
 }
 
 type Event struct {

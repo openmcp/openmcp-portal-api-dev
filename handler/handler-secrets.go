@@ -26,7 +26,7 @@ func GetSecrets(w http.ResponseWriter, r *http.Request) {
 	resSecret := SecretRes{}
 	secret := SecretInfo{}
 	// http://192.168.0.152:31635/api/v1/namespaces/openmcp/persistentvolumeclaims?clustername=openmcp
-	secretURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/secrets?clustername=" + clusterName
+	secretURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/secrets?clustername=" + clusterName
 
 	go CallAPI(token, secretURL, ch)
 
@@ -67,7 +67,7 @@ func GetSecretOverView(w http.ResponseWriter, r *http.Request) {
 	// http://192.168.0.152:31635/api/v1/namespaces/openmcp/secrets/default-token-fwpzk?clustername=openmcp
 
 	// http://192.168.0.152:31635/api/v1/namespaces/openmcp/secrets/default-token-fwpzk?clustername=openmcp
-	secretURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/secrets/" + secretName + "?clustername=" + clusterName
+	secretURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/secrets/" + secretName + "?clustername=" + clusterName
 	fmt.Println(secretURL)
 	go CallAPI(token, secretURL, ch)
 

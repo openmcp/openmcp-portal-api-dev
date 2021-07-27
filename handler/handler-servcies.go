@@ -25,7 +25,7 @@ func Services(w http.ResponseWriter, r *http.Request) {
 	// projectName := vars["projectName"]
 
 	// fmt.Println(clustrName, projectName)
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -47,7 +47,7 @@ func Services(w http.ResponseWriter, r *http.Request) {
 
 	for _, clusterName := range clusterNames {
 		service := ServiceInfo{}
-		serviceURL := "http://" + openmcpURL + "/api/v1/services?clustername=" + clusterName
+		serviceURL := "https://" + openmcpURL + "/api/v1/services?clustername=" + clusterName
 		go CallAPI(token, serviceURL, ch)
 		serviceResult := <-ch
 		serviceData := serviceResult.data
@@ -61,6 +61,8 @@ func Services(w http.ResponseWriter, r *http.Request) {
 			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
 			serviceType := GetStringElement(element, []string{"spec", "type"})
 			// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
+			clusterIP := GetStringElement(element, []string{"spec", "clusterIP"})
+			externalIP := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
 
 			selector := ""
 			selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
@@ -113,6 +115,8 @@ func Services(w http.ResponseWriter, r *http.Request) {
 			service.Selector = selector
 			service.Port = port
 			service.CreatedTime = createdTime
+			service.ClusterIP = clusterIP
+			service.ExternalIP = externalIP
 
 			resServices.Services = append(resServices.Services, service)
 		}
@@ -131,7 +135,7 @@ func GetServicesInProject(w http.ResponseWriter, r *http.Request) {
 	resServices := ServicesRes{}
 
 	service := ServiceInfo{}
-	serviceURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?clustername=" + clusterName
+	serviceURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services?clustername=" + clusterName
 	go CallAPI(token, serviceURL, ch)
 	serviceResult := <-ch
 	serviceData := serviceResult.data
@@ -145,6 +149,8 @@ func GetServicesInProject(w http.ResponseWriter, r *http.Request) {
 		// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
 		serviceType := GetStringElement(element, []string{"spec", "type"})
 		// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
+		clusterIP := GetStringElement(element, []string{"spec", "clusterIP"})
+		externalIP := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
 
 		selector := ""
 		selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
@@ -197,6 +203,8 @@ func GetServicesInProject(w http.ResponseWriter, r *http.Request) {
 		service.Selector = selector
 		service.Port = port
 		service.CreatedTime = createdTime
+		service.ClusterIP = clusterIP
+		service.ExternalIP = externalIP
 
 		resServices.Services = append(resServices.Services, service)
 	}
@@ -215,7 +223,7 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 	resServiceOverview := ServiceOverview{}
 
 	service := ServiceBasicInfo{}
-	serviceURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services/" + serviceName + "?clustername=" + clusterName
+	serviceURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/services/" + serviceName + "?clustername=" + clusterName
 	go CallAPI(token, serviceURL, ch)
 	serviceResult := <-ch
 	serviceData := serviceResult.data
@@ -248,7 +256,7 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 		selector = "-"
 	}
 
-	endPointURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/endpoints/" + serviceName + "?clustername=" + clusterName
+	endPointURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/endpoints/" + serviceName + "?clustername=" + clusterName
 	go CallAPI(token, endPointURL, ch)
 	endPointResult := <-ch
 	endPointData := endPointResult.data
@@ -336,7 +344,7 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 	// http: //192.168.0.152:31635/api/v1/namespaces/openmcp/pods?clustername=openmcp
 	resPod := PodRes{}
 	if len(endPointPods) > 0 {
-		podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+		podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 		go CallAPI(token, podURL, ch)
 		podResult := <-ch
 		podData := podResult.data
@@ -392,7 +400,7 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 
 	//events
 	// http://192.168.0.152:31635/api/v1/namespaces/ingress-nginx/events?clustername=cluster1
-	eventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+	eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 
 	go CallAPI(token, eventURL, ch)
 	eventResult := <-ch

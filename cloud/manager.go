@@ -98,8 +98,8 @@ func GetNodeState(instanceId *string, nodenm string, cluster string, aKey string
 		fmt.Println("Error", err)
 	} else {
 		for i := 0; i <= 120; i++ {
-			fmt.Println("Count", i)
-			log.Println("count", i)
+			// fmt.Println("Count", i)
+			// log.Println("count", i)
 			result, errr := ec2Svc.DescribeInstances(&ec2.DescribeInstancesInput{
 				InstanceIds: iid,
 			})

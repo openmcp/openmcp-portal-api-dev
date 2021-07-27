@@ -50,13 +50,18 @@ func YamlApply(w http.ResponseWriter, r *http.Request) {
 		} else {
 			namespace = "default"
 		}
+		// portal:
+		// openmcpurl: 192.168.0.152
+		// port:       31635
+		// kubeconfig: config
+		// openmcpURL2 := "192.168.0.142"
 
 		// fmt.Println(obj)
 		// fmt.Println(gvk.Kind, gvk.Version, gvk.Group, unstructuredObj.GetNamespace())
 		if gvk.Group == "" {
-			urlString = "http://" + openmcpURL + "/apis/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
+			urlString = "https://" + openmcpURL + "/apis/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
 		} else {
-			urlString = "http://" + openmcpURL + "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
+			urlString = "https://" + openmcpURL + "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
 		}
 		urlString = strings.ToLower(urlString)
 		pBody := bytes.NewBuffer(rawObj.Raw)

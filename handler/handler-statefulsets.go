@@ -18,7 +18,7 @@ func GetStatefulsets(w http.ResponseWriter, r *http.Request) {
 	// projectName := vars["projectName"]
 
 	// fmt.Println(clustrName, projectName)
-	clusterurl := "http://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -40,7 +40,7 @@ func GetStatefulsets(w http.ResponseWriter, r *http.Request) {
 	for _, clusterName := range clusterNames {
 		statefulset := StatefulsetInfo{}
 		// get node names, cpu(capacity)
-		statefulsetURL := "http://" + openmcpURL + "/apis/apps/v1/statefulsets?clustername=" + clusterName
+		statefulsetURL := "https://" + openmcpURL + "/apis/apps/v1/statefulsets?clustername=" + clusterName
 		go CallAPI(token, statefulsetURL, ch)
 		statefulsetResult := <-ch
 		// fmt.Println(statefulsetResult)
@@ -108,7 +108,7 @@ func GetStatefulsetsInProject(w http.ResponseWriter, r *http.Request) {
 	statefulset := StatefulsetInfo{}
 	// get node names, cpu(capacity)
 	// http: //192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/statefulsets?clustername=cluster1
-	statefulsetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets?clustername=" + clusterName
+	statefulsetURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets?clustername=" + clusterName
 	go CallAPI(token, statefulsetURL, ch)
 	statefulsetResult := <-ch
 	// fmt.Println(statefulsetResult)
@@ -178,7 +178,7 @@ func GetStatefulsetOverview(w http.ResponseWriter, r *http.Request) {
 	statefulset := StatefulsetInfo{}
 	// get node names, cpu(capacity)
 	// http: //192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/statefulsets?clustername=cluster1
-	statefulsetURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets/" + statefulsetName + "?clustername=" + clusterName
+	statefulsetURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/statefulsets/" + statefulsetName + "?clustername=" + clusterName
 	go CallAPI(token, statefulsetURL, ch)
 	statefulsetResult := <-ch
 	// fmt.Println(statefulsetResult)
@@ -238,7 +238,7 @@ func GetStatefulsetOverview(w http.ResponseWriter, r *http.Request) {
 
 	// // replicasets
 	// // http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-	// replURL := "http://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterName
+	// replURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterName
 	// go CallAPI(token, replURL, ch)
 	// replResult := <-ch
 	// // fmt.Println(statefulsetResult)
@@ -262,7 +262,7 @@ func GetStatefulsetOverview(w http.ResponseWriter, r *http.Request) {
 	// find pods within statefulsets
 	// replicasets
 	// http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-	podURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
+	podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterName
 	go CallAPI(token, podURL, ch)
 	podResult := <-ch
 	podData := podResult.data
@@ -340,7 +340,7 @@ func GetStatefulsetOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//events
-	eventURL := "http://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
+	eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterName
 	go CallAPI(token, eventURL, ch)
 	eventResult := <-ch
 	eventData := eventResult.data

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,17 +18,42 @@ type Resultmap struct {
 	data map[string]interface{}
 }
 
-func GetOpenMCPToken() string {
-	var client http.Client
+type Account struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
-	resp, err := client.Get("http://" + openmcpURL + "/token?username=openmcp&password=keti")
+func GetOpenMCPToken() string {
+	// caCert, err := ioutil.ReadFile(`server.crt`)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// caCertPool := x509.NewCertPool()
+	// caCertPool.AppendCertsFromPEM(caCert)
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			// TLSClientConfig: &tls.Config{
+			// 	RootCAs: caCertPool,
+			// },
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	account := Account{"openmcp", "keti"}
+
+	pbytes, _ := json.Marshal(account)
+	buff := bytes.NewBuffer(pbytes)
+	// resp, err := client.Get("https://" + openmcpURL + "/token?username=openmcp&password=keti")
+	resp, err := client.Post("https://"+openmcpURL+"/token", "application/json", buff)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer resp.Body.Close()
 	var data map[string]interface{}
 	token := ""
-
 	if resp.StatusCode == http.StatusOK {
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -35,13 +62,11 @@ func GetOpenMCPToken() string {
 		json.Unmarshal([]byte(bodyBytes), &data)
 		token = data["token"].(string)
 
+	} else {
+		fmt.Println("failed")
 	}
 	return token
 }
-
-// func GetDecimalP2 (f []float64) string {
-
-// }
 
 func CallAPI(token string, url string, ch chan<- Resultmap) {
 	start := time.Now()
@@ -50,7 +75,12 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 
 	req.Header.Add("Authorization", bearer)
 	// Send req using http Client
-	var client http.Client
+	// var client http.Client
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -114,4 +144,195 @@ func PostYaml(url string, yaml io.Reader) ([]byte, error) {
 	fmt.Println(str)
 	return respBody, nil
 
+}
+
+func GetStringElement(nMap interface{}, keys []string) string {
+	result := ""
+
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(string)
+				} else {
+					result = childMap.(string)
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = "-"
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = "-"
+					break
+				}
+			}
+		}
+	} else {
+		result = "-"
+	}
+	return result
+}
+
+func GetIntElement(nMap interface{}, keys []string) int {
+	result := 0
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(int)
+				} else {
+					result = childMap.(int)
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0
+					break
+				}
+			}
+		}
+	} else {
+		result = 0
+	}
+	return result
+}
+
+func GetFloat64Element(nMap interface{}, keys []string) float64 {
+	var result float64 = 0.0
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(float64)
+				} else {
+					result = childMap.(float64)
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0.0
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = 0.0
+					break
+				}
+			}
+		}
+	} else {
+		result = 0.0
+	}
+	return result
+}
+
+func GetInterfaceElement(nMap interface{}, keys []string) interface{} {
+	var result interface{}
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0]
+				} else {
+					result = childMap
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			}
+		}
+	} else {
+		result = nil
+	}
+	return result
+}
+
+func GetArrayElement(nMap interface{}, keys []string) []interface{} {
+	var result []interface{}
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})
+				} else {
+					result = childMap.([]interface{})
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = nil
+					break
+				}
+			}
+		}
+	} else {
+		result = nil
+	}
+	return result
 }
