@@ -57,6 +57,14 @@ type NodeBasicInfo struct {
 	Cluster         string `json:"cluster"`
 }
 
+type NodeResourceUsage2 struct {
+	Cluster string `json:"cluster"`
+	Node    string `json:"node"`
+	Cpu     Unit   `json:"cpu"`
+	Memory  Unit   `json:"memory"`
+	Storage Unit   `json:"storage"`
+}
+
 type NodeResourceUsage struct {
 	Cpu     Unit `json:"cpu"`
 	Memory  Unit `json:"memory"`
@@ -197,6 +205,17 @@ type StatefulsetOverview struct {
 	Events []Event         `json:"events"`
 	// PhysicalResources PhysicalResources `json:"physical_resources"`
 	// ReplicaStatus     []ReplicaInfo     `json:"replica_status"`
+}
+
+type DNSRes struct {
+	DNS []DNSInfo `json:"dns"`
+}
+
+type DNSInfo struct {
+	Name    string `json:"name"`
+	Project string `json:"project"`
+	DnsName string `json:"dns_name"`
+	IP      string `json:"ip"`
 }
 
 type ReplicaInfo struct {
@@ -474,4 +493,24 @@ type AgentPool struct {
 	Name     string `json:"name"`
 	VmssName string `json:"vmssname"`
 	Count    int32  `json:"nodecount"`
+}
+
+type OpenmcpPolicyRes struct {
+	OpenmcpPolicy []OpenmcpPolicy `json:"openmcp_policy"`
+}
+
+type OpenmcpPolicy struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Value  string `json:"value"`
+}
+
+type EditPolicyRes struct {
+	EditPolicy []interface{} `json:"edit_policy"`
+}
+
+type EditInfo struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value string `json:"value"`
 }

@@ -116,7 +116,122 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	// ch <- fmt.Sprintf("%.2fs %s %v", secs, url, data)
 
 	ch <- Resultmap{secs, url, data}
+}
 
+func PostYaml(url string, yaml io.Reader) ([]byte, error) {
+	token := GetOpenMCPToken()
+	// fmt.Println("yaml   :", yaml)
+	var bearer = "Bearer " + token
+	req, err := http.NewRequest("POST", url, yaml)
+
+	req.Header.Add("Authorization", bearer)
+	// Send req using http Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
+
+}
+
+func CallPostAPI(url string, headtype string, body interface{}) ([]byte, error) {
+	token := GetOpenMCPToken()
+	// fmt.Println("yaml   :", yaml)
+	var bearer = "Bearer " + token
+
+	payloadBuf := new(bytes.Buffer)
+	json.NewEncoder(payloadBuf).Encode(body)
+
+	req, err := http.NewRequest("POST", url, payloadBuf)
+
+	req.Header.Add("Authorization", bearer)
+	// Send req using http Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
+}
+
+func CallPatchAPI(url string, headtype string, body []interface{}, bodyIsArray bool) ([]byte, error) {
+	token := GetOpenMCPToken()
+	// fmt.Println("yaml   :", yaml)
+	var bearer = "Bearer " + token
+
+	payloadBuf := new(bytes.Buffer)
+	if bodyIsArray {
+		json.NewEncoder(payloadBuf).Encode(body)
+	} else {
+		json.NewEncoder(payloadBuf).Encode(body[0])
+	}
+
+	req, err := http.NewRequest("PATCH", url, payloadBuf)
+
+	req.Header.Add("Authorization", bearer)
+	req.Header.Set("Content-Type", headtype)
+	// Send req using http Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
 }
 
 func NodeHealthCheck(condType string) string {

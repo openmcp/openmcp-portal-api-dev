@@ -9,9 +9,10 @@ import (
 
 var portalConfig = struct {
 	Portal struct {
-		OpenmcpURL string
-		Port       string
-		Kubeconfig string
+		OpenmcpURL         string
+		Port               string
+		Kubeconfig         string
+		OpenmcpClusterName string
 	}
 }{}
 
@@ -22,6 +23,8 @@ func InitPortalConfig() string {
 
 var openmcpURL = InitPortalConfig()
 var kubeConfigFile = portalConfig.Portal.Kubeconfig
+var openmcpAddress = portalConfig.Portal.OpenmcpURL
+var openmcpClusterName = portalConfig.Portal.OpenmcpClusterName
 
 var InfluxConfig = struct {
 	Influx struct {

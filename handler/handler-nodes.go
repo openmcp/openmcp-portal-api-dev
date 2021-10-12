@@ -628,3 +628,130 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func NodesMetric(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	//전체 클러스터 이름 검색
+	clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+	go CallAPI(token, clusterURL, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+
+	clusterNames := []string{}
+	nodeResUsage := []NodeResourceUsage2{}
+
+	for _, element := range clusterData["items"].([]interface{}) {
+		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+		if joinStatus == "JOIN" {
+			clusterName := GetStringElement(element, []string{"metadata", "name"})
+			clusterNames = append(clusterNames, clusterName)
+		}
+	}
+
+	//전체 노드 검색
+	for _, clusterName := range clusterNames {
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+		go CallAPI(token, nodeURL, ch)
+		nodeResult := <-ch
+		nodeData := nodeResult.data
+		nodeItems := nodeData["items"].([]interface{})
+
+		//노드 별 자원 검색
+		for _, element := range nodeItems {
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+
+			// Node Resource Usage
+			cpuCapacity := GetStringElement(element, []string{"status", "capacity", "cpu"})
+			cpuCapFloat, _ := strconv.ParseFloat(cpuCapacity, 64)
+			memoryCapacity := GetStringElement(element, []string{"status", "capacity", "memory"})
+			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
+			memoryCapFloat, _ := strconv.ParseFloat(memoryCapacity, 64)
+
+			//노드 메트릭 검색
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+			go CallAPI(token, clMetricURL, ch)
+			clMetricResult := <-ch
+			clMetricData := clMetricResult.data
+
+			cpuUse := "0"
+			memoryUse := "0"
+			fsUse := "0"
+			fsCapaUse := "0"
+			cpuUseFloat := 0.0
+			memoryUseFloat := 0.0
+			fsUseFloat := 0.0
+			fsCapaUseFloat := 0.0
+
+			//  cluster CPU Usage, Memroy Usage 확인
+			if clMetricData["nodemetrics"] != nil {
+				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
+					cpuUseCheck := GetInterfaceElement(element, []string{"cpu", "CPUUsageNanoCores"})
+					if cpuUseCheck == nil {
+						cpuUse = "0n"
+					} else {
+						cpuUse = cpuUseCheck.(string)
+					}
+					cpuUse = strings.Split(cpuUse, "n")[0]
+					cpuUseFloat, _ = strconv.ParseFloat(cpuUse, 64)
+
+					memoryUseCheck := GetInterfaceElement(element, []string{"memory", "MemoryUsageBytes"})
+					if memoryUseCheck == nil {
+						memoryUse = "0Ki"
+					} else {
+						memoryUse = memoryUseCheck.(string)
+					}
+					memoryUse = strings.Split(memoryUse, "Ki")[0]
+					memoryUseFloat, _ = strconv.ParseFloat(memoryUse, 64)
+
+					fsUseCheck := GetInterfaceElement(element, []string{"fs", "FsUsedBytes"})
+					if fsUseCheck == nil {
+						fsUse = "0Ki"
+					} else {
+						fsUse = fsUseCheck.(string)
+					}
+					fsUse = strings.Split(fsUse, "Ki")[0]
+					fsUseFloat, _ = strconv.ParseFloat(fsUse, 64)
+
+					fsCapaCheck := GetInterfaceElement(element, []string{"fs", "FsCapacityBytes"})
+					if fsCapaCheck == nil {
+						fsCapaUse = "0Ki"
+					} else {
+						fsCapaUse = fsCapaCheck.(string)
+					}
+					fsCapaUse = strings.Split(fsCapaUse, "Ki")[0]
+					fsCapaUseFloat, _ = strconv.ParseFloat(fsCapaUse, 64)
+				}
+			}
+
+			var cpuStatus []NameVal
+			var memStatus []NameVal
+			var fsStatus []NameVal
+
+			cpuStatus = append(cpuStatus, NameVal{"Used", math.Ceil(cpuUseFloat/1000/1000/1000*100) / 100})
+			cpuStatus = append(cpuStatus, NameVal{"Total", cpuCapFloat})
+			// cpuStatus = append(cpuStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
+
+			memStatus = append(memStatus, NameVal{"Used", math.Ceil(memoryUseFloat/1000/1000*100) / 100})
+			memStatus = append(memStatus, NameVal{"Total", math.Ceil(float64(memoryCapFloat)/1000/1000*100) / 100})
+			// memStatus = append(memStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
+
+			fsStatus = append(fsStatus, NameVal{"Used", math.Ceil(fsUseFloat/1000/1000*100) / 100})
+			fsStatus = append(fsStatus, NameVal{"Total", math.Ceil(fsCapaUseFloat/1000/1000*100) / 100})
+
+			cpuUnit := Unit{"core", cpuStatus}
+			memUnit := Unit{"Gi", memStatus}
+			fsUnit := Unit{"Gi", fsStatus}
+
+			nodeResUsage = append(nodeResUsage, NodeResourceUsage2{clusterName, nodeName, cpuUnit, memUnit, fsUnit})
+
+		}
+
+	}
+
+	responseJSON := nodeResUsage
+
+	json.NewEncoder(w).Encode(responseJSON)
+
+}

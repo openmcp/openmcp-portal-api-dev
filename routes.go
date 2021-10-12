@@ -172,6 +172,20 @@ var routes = Routes{
 	},
 
 	Route{
+		"clusterJoin",
+		"POST",
+		"/apis/clusters/join",
+		handler.OpenMCPJoin,
+	},
+
+	Route{
+		"clusterUnjoin",
+		"POST",
+		"/apis/clusters/unjoin",
+		handler.OpenMCPUnjoin,
+	},
+
+	Route{
 		"nodes",
 		"GET",
 		"/apis/clusters/{clusterName}/nodes",
@@ -193,6 +207,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"node-metric",
+		"GET",
+		"/apis/nodes_metric",
+		handler.NodesMetric,
+	},
+
+	Route{
 		"projects",
 		"GET",
 		"/apis/projects",
@@ -204,6 +225,13 @@ var routes = Routes{
 		"GET",
 		"/apis/clusters/{clusterName}/projects/{projectName}",
 		handler.GetProjectOverview,
+	},
+
+	Route{
+		"AddProject",
+		"POST",
+		"/apis/clusters/projects/create",
+		handler.AddProject,
 	},
 
 	Route{
@@ -387,5 +415,19 @@ var routes = Routes{
 		"GET",
 		"/apis/clusters/{clusterName}/projects/{projectName}/configmaps/{configmapName}",
 		handler.GetConfigmapOverView,
+	},
+
+	Route{
+		"settings",
+		"GET",
+		"/apis/policy/openmcp",
+		handler.GetOpenmcpPolicy,
+	},
+
+	Route{
+		"settings",
+		"POST",
+		"/apis/policy/openmcp/edit",
+		handler.UpdateOpenmcpPolicy,
 	},
 }

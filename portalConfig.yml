@@ -2,6 +2,7 @@ portal:
     openmcpurl: 192.168.0.152
     port:       30000
     kubeconfig: config   
+    openmcpclustername : openmcp
 # 31635
     
 

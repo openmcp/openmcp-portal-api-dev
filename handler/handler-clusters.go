@@ -302,7 +302,24 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 				region := "-"
 				zone := "-"
-				endpoint := GetStringElement(element, []string{"spec", "apiEndpoint"})
+
+				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+				go CallAPI(token, clusterurl, ch)
+				clusters2 := <-ch
+				clusterData2 := clusters2.data
+
+				endpoint := ""
+				for _, element := range clusterData2["items"].([]interface{}) {
+					targetClusterName := GetStringElement(element, []string{"metadata", "name"})
+
+					if clusterName == targetClusterName {
+						endpoint = GetStringElement(element, []string{"spec", "apiEndpoint"})
+						endpoint = strings.Replace(endpoint, "https://", "", -1)
+						endpoint = strings.Replace(endpoint, "http://", "", -1)
+						address := strings.Split(endpoint, ":")
+						endpoint = address[0]
+					}
+				}
 
 				nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 				go CallAPI(token, nodeURL, ch)
@@ -651,5 +668,128 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(responseJSON)
 
 	}
+}
 
+func OpenMCPJoin(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("OpenMCPJoin")
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusterName := data["clusterName"].(string)
+	clusterAddress := data["clusterAddress"].(string)
+
+	if clusterAddress == "" {
+		ch := make(chan Resultmap)
+		token := GetOpenMCPToken()
+		clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+		go CallAPI(token, clusterurl, ch)
+		clusters := <-ch
+		clusterData := clusters.data
+
+		for _, element := range clusterData["items"].([]interface{}) {
+			targetClusterName := GetStringElement(element, []string{"metadata", "name"})
+
+			if clusterName == targetClusterName {
+				endpoint := GetStringElement(element, []string{"spec", "apiEndpoint"})
+				endpoint = strings.Replace(endpoint, "https://", "", -1)
+				endpoint = strings.Replace(endpoint, "http://", "", -1)
+				address := strings.Split(endpoint, ":")
+				clusterAddress = address[0]
+			}
+		}
+	}
+
+	type JoinInfo struct {
+		Op    string `json:"op"`
+		Path  string `json:"path"`
+		Value string `json:"value"`
+	}
+
+	// [
+	// 		{"op": "replace", "path": "/spec/joinStatus","value": "JOINING"},
+	// 		{"op": "replace", "path": "/spec/metalLBRange/addressFrom", "value": "$ADDRESSFROM"},
+	// 		{"op": "replace", "path": "/spec/metalLBRange/addressTo", "value": "$ADDRESSTO"}
+	// ]
+
+	var body []interface{}
+	body = append(body, JoinInfo{"replace", "/spec/joinStatus", "JOINING"})
+	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressFrom", clusterAddress})
+	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressTo", openmcpAddress})
+
+	fmt.Println(body)
+
+	var jsonErrs []jsonErr
+
+	projectURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clusterName + "?clustername=" + openmcpClusterName
+
+	resp, err := CallPatchAPI(projectURL, "application/json-patch+json", body, true)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "Cluster Join Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+	json.NewEncoder(w).Encode(jsonErrs)
+}
+
+func OpenMCPUnjoin(w http.ResponseWriter, r *http.Request) {
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusterName := data["clusterName"].(string)
+	fmt.Println(clusterName)
+
+	type JoinInfo struct {
+		Op    string `json:"op"`
+		Path  string `json:"path"`
+		Value string `json:"value"`
+	}
+
+	// [
+	// 		{"op": "replace", "path": "/spec/joinStatus","value": "JOINING"},
+	// 		{"op": "replace", "path": "/spec/metalLBRange/addressFrom", "value": "$ADDRESSFROM"},
+	// 		{"op": "replace", "path": "/spec/metalLBRange/addressTo", "value": "$ADDRESSTO"}
+	// ]
+
+	var body []interface{}
+	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressFrom", ""})
+	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressTo", ""})
+	body = append(body, JoinInfo{"replace", "/spec/joinStatus", "UNJOIN"})
+
+	var jsonErrs []jsonErr
+
+	//https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster2?clustername=openmcp
+	projectURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clusterName + "?clustername=" + openmcpClusterName
+
+	resp, err := CallPatchAPI(projectURL, "application/json-patch+json", body, true)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "Cluster UnJoin Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+
+	json.NewEncoder(w).Encode(jsonErrs)
 }

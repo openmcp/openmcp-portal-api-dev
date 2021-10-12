@@ -126,7 +126,14 @@ func PostYaml(url string, yaml io.Reader) ([]byte, error) {
 
 	req.Header.Add("Authorization", bearer)
 	// Send req using http Client
-	var client http.Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
 	resp, err := client.Do(req)
 
 	if err != nil {

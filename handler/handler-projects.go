@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -220,4 +221,78 @@ func GetProjectOverview(w http.ResponseWriter, r *http.Request) {
 	resProjectOverview.PhysicalResources = results
 
 	json.NewEncoder(w).Encode(resProjectOverview)
+}
+
+func AddProject(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	// w.WriteHeader(http.StatusOK)
+
+	fmt.Println("AddProject")
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusters := data["clusters"]
+	project := data["project"].(string)
+
+	type Metadata struct {
+		Name string `json:"name"`
+	}
+
+	type jsonBody struct {
+		ApiVersion string   `json:"apiVersion"`
+		Kind       string   `json:"kind"`
+		Metadata   Metadata `json:"metadata"`
+	}
+	// 	{
+	//     "apiVersion": "v1",
+	//     "kind": "Namespace",
+	//     "metadata": {
+	//         "name": "test-namespace1"
+	//     }
+	// }
+
+	body := jsonBody{}
+	metaInfo := Metadata{}
+	metaInfo.Name = project
+	body.ApiVersion = "v1"
+	body.Kind = "Namespace"
+	body.Metadata = metaInfo
+
+	var jsonErrs []jsonErr
+
+	for _, element := range clusters.([]interface{}) {
+
+		clusterName := element.(map[string]interface{})["name"].(string)
+		//https://192.168.0.152:30000/api/v1/namespaces?clustername=cluster1
+		projectURL := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + clusterName
+		// fmt.Println(clusterName)
+		// fmt.Println(projectURL)
+		// fmt.Println(project)
+
+		resp, err := CallPostAPI(projectURL, "application/json", body)
+		var msg jsonErr
+
+		if err != nil {
+			msg = jsonErr{503, "failed", "request fail | " + body.Kind + " | " + metaInfo.Name}
+			// json.NewEncoder(w).Encode(msg)
+		}
+
+		var data map[string]interface{}
+		json.Unmarshal([]byte(resp), &data)
+		if data != nil {
+			if data["kind"].(string) == "Status" {
+				msg = jsonErr{501, "failed", data["message"].(string) + body.Kind + " | " + metaInfo.Name}
+				// json.NewEncoder(w).Encode(msg)
+			} else {
+				msg = jsonErr{200, "success", "Resource Created" + body.Kind + " | " + metaInfo.Name}
+				// json.NewEncoder(w).Encode(msg)
+			}
+		}
+
+		jsonErrs = append(jsonErrs, msg)
+
+	}
+	json.NewEncoder(w).Encode(jsonErrs)
+
 }

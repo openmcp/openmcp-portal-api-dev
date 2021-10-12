@@ -18,105 +18,104 @@ func Dns(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
-	// vars := mux.Vars(r)
-	// clusterName := vars["clusterName"]
-	// projectName := vars["projectName"]
+	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 
-	// fmt.Println(clustrName, projectName)
-	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
-	go CallAPI(token, clusterurl, ch)
-	clusters := <-ch
-	clusterData := clusters.data
+	// go CallAPI(token, clusterurl, ch)
+	// clusters := <-ch
+	// clusterData := clusters.data
 
-	resServices := ServicesRes{}
-	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	// resServices := ServicesRes{}
+	// clusterNames := []string{}
+	// clusterNames = append(clusterNames, "openmcp")
 
-	//get clusters Information
-	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
-		}
+	// //get clusters Information
+	// for _, element := range clusterData["items"].([]interface{}) {
+	// 	clusterName := GetStringElement(element, []string{"metadata", "name"})
+	// 	// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+	// 	clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+	// 	if clusterType == "Ready" {
+	// 		clusterNames = append(clusterNames, clusterName)
+	// 	}
 
-	}
+	// }
 
-	for _, clusterName := range clusterNames {
-		service := ServiceInfo{}
+	// for _, clusterName := range clusterNames {
+	resDns := DNSRes{}
+	dnsInfo := DNSInfo{}
+	// dnsURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + clusterName
+	// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=openmcp
+	dnsURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + openmcpClusterName
+	go CallAPI(token, dnsURL, ch)
+	dnsResult := <-ch
+	dnsData := dnsResult.data
+	dnsItems := dnsData["items"].([]interface{})
 
-		dnsURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdnsendpoints?clustername=" + clusterName
-		go CallAPI(token, dnsURL, ch)
-		dnsResult := <-ch
-		dnsData := dnsResult.data
-		dnsItems := dnsData["items"].([]interface{})
+	// get service Information
+	for _, element := range dnsItems {
+		name := GetStringElement(element, []string{"metadata", "name"})
+		namespace := GetStringElement(element, []string{"metadata", "namespace"})
 
-		// get service Information
-		for _, element := range dnsItems {
-			name := GetStringElement(element, []string{"metadata", "name"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			namespace := GetStringElement(element, []string{"metadata", "namespace"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-			serviceType := GetStringElement(element, []string{"spec", "type"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
+		// Name    string   `json:"name"`
+		// Project string   `json:"project"`
+		// DnsName string   `json:"dns_name"`
+		// IP      []string `json:"ip"`
 
-			selector := ""
-			selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["selector"]
-			if selectorCheck != nil {
-				i := 0
-				for key, val := range selectorCheck.(map[string]interface{}) {
-					i++
-					value := fmt.Sprintf("%v", val)
-					if i == len(selectorCheck.(map[string]interface{})) {
-						selector = selector + key + " : " + value
-					} else {
-						selector = selector + key + " : " + value + "|"
-					}
-				}
-			} else {
-				selector = "-"
-			}
-
-			port := ""
-			portCheck := GetArrayElement(element, []string{"spec", "ports"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
-			if portCheck != nil {
-				for i, item := range portCheck {
-					j := 0
-					for key, val := range item.(map[string]interface{}) {
-						j++
-						value := fmt.Sprintf("%v", val)
-						if j == len(item.(map[string]interface{})) {
-							port = port + "{ " + key + " : " + value + " }"
+		dnsName := ""
+		ip := ""
+		endpoints := GetArrayElement(element, []string{"spec", "endpoints"})
+		if endpoints != nil {
+			for _, item := range endpoints {
+				dnsName = GetStringElement(item, []string{"dnsName"})
+				ips := GetArrayElement(item, []string{"targets"})
+				if ips != nil {
+					for j, ipItem := range ips {
+						ipString := fmt.Sprintf("%v", ipItem)
+						if j+1 == len(ips) {
+							ip = ip + ipString
 						} else {
-							port = port + "{ " + key + " : " + value + " },  "
+							ip = ip + ipString + ", "
 						}
 					}
-					if i < len(portCheck)-1 {
-						port = port + "|"
-					}
 				}
 
-			} else {
-				port = "-"
+				dnsInfo.Name = name
+				dnsInfo.Project = namespace
+				dnsInfo.DnsName = dnsName
+				dnsInfo.IP = ip
+
+				resDns.DNS = append(resDns.DNS, dnsInfo)
+
 			}
-			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-
-			service.Cluster = clusterName
-			service.Name = name
-			service.Project = namespace
-			service.Type = serviceType
-			service.Selector = selector
-			service.Port = port
-			service.CreatedTime = createdTime
-
-			resServices.Services = append(resServices.Services, service)
 		}
+
+		// port := ""
+		// portCheck := GetArrayElement(element, []string{"spec", "ports"})
+		// // element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
+		// if portCheck != nil {
+		// 	for i, item := range portCheck {
+		// 		j := 0
+		// 		for key, val := range item.(map[string]interface{}) {
+		// 			j++
+		// 			value := fmt.Sprintf("%v", val)
+		// 			if j == len(item.(map[string]interface{})) {
+		// 				port = port + "{ " + key + " : " + value + " }"
+		// 			} else {
+		// 				port = port + "{ " + key + " : " + value + " },  "
+		// 			}
+		// 		}
+		// 		if i < len(portCheck)-1 {
+		// 			port = port + "|"
+		// 		}
+		// 	}
+		// } else {
+		// 	port = "-"
+		// }
+		// createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+		// // element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+
 	}
-	json.NewEncoder(w).Encode(resServices.Services)
+	// }
+	json.NewEncoder(w).Encode(resDns.DNS)
 }
 
 //get cluster-overview list handler
