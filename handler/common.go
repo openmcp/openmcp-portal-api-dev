@@ -234,6 +234,50 @@ func CallPatchAPI(url string, headtype string, body []interface{}, bodyIsArray b
 	return respBody, nil
 }
 
+func CallPatchAPI2(url string, headtype string, body map[string]interface{}, bodyIsArray bool) ([]byte, error) {
+	token := GetOpenMCPToken()
+	// fmt.Println("yaml   :", yaml)
+	var bearer = "Bearer " + token
+
+	payloadBuf := new(bytes.Buffer)
+	// if bodyIsArray {
+	// 	json.NewEncoder(payloadBuf).Encode(body)
+	// 	} else {
+	// 		json.NewEncoder(payloadBuf).Encode(body[0])
+	// 	}
+	json.NewEncoder(payloadBuf).Encode(body)
+
+	req, err := http.NewRequest("PATCH", url, payloadBuf)
+
+	req.Header.Add("Authorization", bearer)
+	req.Header.Set("Content-Type", headtype)
+	// Send req using http Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
+}
+
 func NodeHealthCheck(condType string) string {
 	result := ""
 

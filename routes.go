@@ -240,6 +240,14 @@ var routes = Routes{
 		"/apis/deployments",
 		handler.GetDeployments,
 	},
+
+	Route{
+		"deployments",
+		"POST",
+		"/apis/deployments/resources",
+		handler.UpdateDeploymentResources,
+	},
+
 	Route{
 		"deploymentsInProject",
 		"GET",

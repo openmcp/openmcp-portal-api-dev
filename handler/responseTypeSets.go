@@ -163,6 +163,7 @@ type DeploymentInfo struct {
 	CreatedTime string                 `json:"created_time"`
 	Uid         string                 `json:"uid,omitempty"`
 	Labels      map[string]interface{} `json:"labels"`
+	Resources   []interface{}          `json:"resources"`
 }
 
 type DeploymentOverview struct {

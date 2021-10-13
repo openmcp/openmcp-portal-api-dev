@@ -205,7 +205,39 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 		status = "0/0"
 	}
 
-	image := GetStringElement(deploymentData, []string{"spec", "template", "spec", "containers", "image"})
+	// image := GetStringElement(deploymentData, []string{"spec", "template", "spec", "containers", "image"})
+	image := ""
+	var resources []interface{}
+	containers := GetArrayElement(deploymentData, []string{"spec", "template", "spec", "containers"})
+	for _, element := range containers {
+		image = image + GetStringElement(element, []string{"image"})
+
+		type Requests struct {
+			Cpu    string `json:"cpu"`
+			Memory string `json:"memory"`
+		}
+
+		type Limits struct {
+			Cpu    string `json:"cpu"`
+			Memory string `json:"memory"`
+		}
+
+		type Resources struct {
+			Name     string   `json:"name"`
+			Requests Requests `json:"requests"`
+			Limits   Limits   `json:"limits"`
+		}
+
+		resourceRes := Resources{}
+		resourceRes.Name = GetStringElement(element, []string{"image"})
+		resourceRes.Limits.Cpu = GetStringElement(element, []string{"resources", "limits", "cpu"})
+		resourceRes.Limits.Memory = GetStringElement(element, []string{"resources", "limits", "memory"})
+		resourceRes.Requests.Cpu = GetStringElement(element, []string{"resources", "requests", "cpu"})
+		resourceRes.Requests.Memory = GetStringElement(element, []string{"resources", "requests", "memory"})
+
+		resources = append(resources, resourceRes)
+	}
+
 	created_time := GetStringElement(deploymentData, []string{"metadata", "creationTimestamp"})
 
 	labels := make(map[string]interface{})
@@ -226,6 +258,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	deployment.CreatedTime = created_time
 	deployment.Uid = uid
 	deployment.Labels = labels
+	deployment.Resources = resources
 
 	resDeploymentOverview.Info = deployment
 
@@ -313,7 +346,7 @@ func GetDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	//ports
 	port := PortInfo{}
 
-	containers := GetArrayElement(deploymentData, []string{"spec", "template", "spec", "containers"})
+	// containers := GetArrayElement(deploymentData, []string{"spec", "template", "spec", "containers"})
 	for _, element := range containers {
 		ports := GetArrayElement(element, []string{"ports"})
 
@@ -406,4 +439,44 @@ func GetDeploymentReplicaStatus(w http.ResponseWriter, r *http.Request) {
 	resReplicaStatus.ReadyReplicas = int(readyReplicas)
 
 	json.NewEncoder(w).Encode(resReplicaStatus)
+}
+
+func UpdateDeploymentResources(w http.ResponseWriter, r *http.Request) {
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusterName := data["cluster"].(string)
+	namespace := data["namespace"].(string)
+	deployment := data["deployment"].(string)
+	resources := data["resources"].(map[string]interface{})
+	// map[spec:map[template:map[spec:map[containers:[map[name:nginx resources:map[requests:map[cpu:200m memory:20Mi]]]]]]]]
+	// fmt.Println(resources)
+
+	var jsonErrs []jsonErr
+
+	// ${apiServer}/apis/apps/v1/namespaces/${req.body.namespace}/deployments/${req.body.deployment}?clustername=${req.body.cluster}
+	projectURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + namespace + "/deployments/" + deployment + "?clustername=" + clusterName
+
+	fmt.Println(projectURL)
+
+	resp, err := CallPatchAPI2(projectURL, "application/strategic-merge-patch+json", resources, true)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "Cluster Join Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+	json.NewEncoder(w).Encode(jsonErrs)
 }
