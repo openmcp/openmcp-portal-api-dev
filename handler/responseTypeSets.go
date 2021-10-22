@@ -515,3 +515,65 @@ type EditInfo struct {
 	Path  string `json:"path"`
 	Value string `json:"value"`
 }
+
+type MigrationRes struct {
+	MigrationInfo []MigrationInfo `json:"migraion_info"`
+}
+
+type MigrationInfo struct {
+	Name          string `json:"name"`
+	Deployment    string `json:"deployment"`
+	SourceCluster string `json:"sourceCluster"`
+	TargetCluster string `json:"targetCluster"`
+	Mamespace     string `json:"namespace"`
+	Status        string `json:"status"`
+	Reason        string `json:"reason"`
+	CreationTime  string `json:"creationTime"`
+	ElapsedTime   string `json:"elapsedTime"`
+}
+
+type SnapshotRes struct {
+	SnapshotInfo []SnapshotInfo `json:"snapshot_info"`
+}
+
+type SnapshotInfo struct {
+	Deployment      string            `json:"deployment"`
+	Snapshots       string            `json:"snapshots"`
+	Cluster         string            `json:"cluster"`
+	Project         string            `json:"project"`
+	SnapshotSubInfo []SnapshotSubInfo `json:"sub_info"`
+}
+
+type SnapshotSubInfo struct {
+	Snapshot     string  `json:"snapshot"`
+	Status       string  `json:"status"`
+	CreationTime string  `json:"creationTime"`
+	Cluster      string  `json:"cluster`
+	Deployment   string  `json:"deployment`
+	Increment    float64 `json:"increment"`
+}
+
+type SnapshotLogRes struct {
+	SnpashotLogInfo []SnpashotLogInfo `json:"snapshot_info"`
+}
+
+type SnpashotLogInfo struct {
+	Type               string               `json:"type"`
+	Name               string               `json:"snapshot"`
+	Deployment         string               `json:"deployment"`
+	Namespace          string               `json:"namespace"`
+	Status             string               `json:"status"`
+	Reason             string               `json:"reason"`
+	SnapshotKey        string               `json:"snapshotkey"`
+	CreationTime       string               `json:"creationTime"`
+	ElapsedTime        string               `json:"elapsedTime"`
+	SnapshotLogSubInfo []SnapshotLogSubInfo `json:"sub_info"`
+}
+
+type SnapshotLogSubInfo struct {
+	Cluster      string `json:"cluster"`
+	ResourceName string `json:"resource_name"`
+	Namespace    string `json:"namespace"`
+	Type         string `json:"type"`
+	SnapshotKey  string `json:"snapshot_key"`
+}

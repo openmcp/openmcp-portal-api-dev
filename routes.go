@@ -135,7 +135,42 @@ var routes = Routes{
 		"migration",
 		"POST",
 		"/apis/migration",
-		Migration,
+		handler.Migration,
+	},
+
+	Route{
+		"migrationLog",
+		"GET",
+		"/apis/migration/log",
+		handler.MigrationLog,
+	},
+
+	Route{
+		"takesnapshot",
+		"POST",
+		"/apis/snapshot",
+		handler.TakeSnapshot,
+	},
+
+	Route{
+		"snapshotlist",
+		"GET",
+		"/apis/snapshot",
+		handler.SnapshotList,
+	},
+
+	Route{
+		"snapshotlog",
+		"GET",
+		"/apis/snapshot/log",
+		handler.SnapshotLog,
+	},
+
+	Route{
+		"snapshotrestore",
+		"POST",
+		"/apis/snapshot/restore",
+		handler.SnapshotRestore,
 	},
 
 	Route{
@@ -249,7 +284,14 @@ var routes = Routes{
 	},
 
 	Route{
-		"deploymentsInProject",
+		"replicaSetPodNum",
+		"POST",
+		"/apis/deployments/replica_status/set_pod_num",
+		handler.UpdateReplicaSetPodNum,
+	},
+
+	Route{
+		"replicaSetDelPod",
 		"GET",
 		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments",
 		handler.GetDeploymentsInProject,

@@ -234,7 +234,7 @@ func CallPatchAPI(url string, headtype string, body []interface{}, bodyIsArray b
 	return respBody, nil
 }
 
-func CallPatchAPI2(url string, headtype string, body map[string]interface{}, bodyIsArray bool) ([]byte, error) {
+func CallPatchAPI2(url string, headtype string, body map[string]interface{}) ([]byte, error) {
 	token := GetOpenMCPToken()
 	// fmt.Println("yaml   :", yaml)
 	var bearer = "Bearer " + token
@@ -840,6 +840,45 @@ func GetFloat64Element(nMap interface{}, keys []string) float64 {
 		}
 	} else {
 		result = 0.0
+	}
+	return result
+}
+
+func GetBoolElement(nMap interface{}, keys []string) bool {
+	result := false
+
+	if nMap.(map[string]interface{})[keys[0]] != nil {
+		childMap := nMap.(map[string]interface{})[keys[0]]
+		for i, _ := range keys {
+			typeCheck := fmt.Sprintf("%T", childMap)
+
+			if len(keys)-1 == i {
+				if "[]interface {}" == typeCheck {
+					result = childMap.([]interface{})[0].(bool)
+				} else {
+					result = childMap.(bool)
+				}
+				break
+			}
+
+			if "[]interface {}" == typeCheck {
+				if childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.([]interface{})[0].(map[string]interface{})[keys[i+1]]
+				} else {
+					result = false
+					break
+				}
+			} else {
+				if childMap.(map[string]interface{})[keys[i+1]] != nil {
+					childMap = childMap.(map[string]interface{})[keys[i+1]]
+				} else {
+					result = false
+					break
+				}
+			}
+		}
+	} else {
+		result = false
 	}
 	return result
 }

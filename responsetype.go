@@ -47,8 +47,8 @@ type DashboardRes struct {
 		ProjectsCnt    int       `json:"counts"`
 		ProjectsStatus []NameVal `json:"status"`
 	} `json:"projects"`
-	Regions        []Region       `json:"regions"`
-	JoinedClusters JoinedClusters `json:"joined_clusters"`
+	Regions        []Region         `json:"regions"`
+	JoinedClusters []JoinedClusters `json:"joined_clusters"`
 }
 
 type ManagedCluster struct {

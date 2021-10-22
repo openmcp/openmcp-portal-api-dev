@@ -417,10 +417,10 @@ func GetDeploymentReplicaStatus(w http.ResponseWriter, r *http.Request) {
 	deploymentName := vars["deploymentName"]
 
 	resReplicaStatus := ReplicaStatus{}
+
 	// http://192.168.0.152:31635/apis/apps/v1/namespaces/openmcp/deployments/openmcp-deployment3?clustername=cluster1
 	deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/deployments/" + deploymentName + "?clustername=" + cluster
 
-	fmt.Println(deploymentURL)
 	go CallAPI(token, deploymentURL, ch)
 	deploymentResult := <-ch
 	deploymentData := deploymentResult.data
@@ -456,11 +456,11 @@ func UpdateDeploymentResources(w http.ResponseWriter, r *http.Request) {
 	var jsonErrs []jsonErr
 
 	// ${apiServer}/apis/apps/v1/namespaces/${req.body.namespace}/deployments/${req.body.deployment}?clustername=${req.body.cluster}
-	projectURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + namespace + "/deployments/" + deployment + "?clustername=" + clusterName
+	URL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + namespace + "/deployments/" + deployment + "?clustername=" + clusterName
 
-	fmt.Println(projectURL)
+	fmt.Println(URL)
 
-	resp, err := CallPatchAPI2(projectURL, "application/strategic-merge-patch+json", resources, true)
+	resp, err := CallPatchAPI2(URL, "application/strategic-merge-patch+json", resources)
 	var msg jsonErr
 
 	if err != nil {
@@ -474,6 +474,45 @@ func UpdateDeploymentResources(w http.ResponseWriter, r *http.Request) {
 			msg = jsonErr{501, "failed", dataRes["message"].(string)}
 		} else {
 			msg = jsonErr{200, "success", "Cluster Join Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+	json.NewEncoder(w).Encode(jsonErrs)
+}
+
+func UpdateReplicaSetPodNum(w http.ResponseWriter, r *http.Request) {
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+	fmt.Println(data)
+	clusterName := data["cluster"].(string)
+	namespace := data["namespace"].(string)
+	deployment := data["deployment"].(string)
+	body := data["value"].([]interface{})
+	// map[spec:map[template:map[spec:map[containers:[map[name:nginx resources:map[requests:map[cpu:200m memory:20Mi]]]]]]]]
+	fmt.Println(body)
+
+	var jsonErrs []jsonErr
+
+	// https://192.168.0.152:30000/apis/apps/v1/namespaces/openmcp/deployments/openmcp-deployment5?clustername=cluster1
+
+	URL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + namespace + "/deployments/" + deployment + "?clustername=" + clusterName
+
+	resp, err := CallPatchAPI(URL, "application/json-patch+json", body, true)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "ReplicaSet PodNum Update Complete"}
 		}
 	}
 

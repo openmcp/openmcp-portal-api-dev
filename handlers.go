@@ -17,30 +17,6 @@ import (
 
 var openmcpURL = handler.InitPortalConfig()
 
-func Migration(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/migrations?clustername=openmcp"
-	resp, err := PostYaml(clusterurl, r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		errmsg := jsonErr{503, "failed", "request fail"}
-		json.NewEncoder(w).Encode(errmsg)
-	}
-
-	var data map[string]interface{}
-	json.Unmarshal([]byte(resp), &data)
-
-	if data["kind"].(string) == "Status" {
-		msg := jsonErr{501, "failed", data["message"].(string)}
-		json.NewEncoder(w).Encode(msg)
-	} else {
-		msg := jsonErr{200, "success", "Migration Created"}
-		json.NewEncoder(w).Encode(msg)
-	}
-}
-
 func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -214,73 +190,78 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	var allUrls []string
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
-	// clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster1?clustername=openmcp" //provider, joined 여부
-
-	//https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
-	// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp
-	// https://192.168.0.152:30000/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/cluster1?clustername=openmcp
-
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
 	resCluster := DashboardRes{}
 
-	resJoinedClusters := JoinedClusters{}
-	resJoinedClusters.Name = "OMCP-Master"
-
+	var jcinfoList = make(map[string]JoinedClusters)
 	var clusterlist = make(map[string]Region)
 	var clusternames []string
 	clusterHealthyCnt := 0
 	clusterUnHealthyCnt := 0
 	clusterUnknownCnt := 0
 	for _, element := range clusterData["items"].([]interface{}) {
-		// fmt.Println("element : ", element)
-		region := GetStringElement(element, []string{"status", "zones"})
-		zone := "Seoul" //todo Zone관련 데이터 필요 (openmcp)
-		// region := element.(map[string]interface{})["status"].(map[string]interface{})["zones"].([]interface{})[0].(string)
-		// if index > 0 {
-		// 	region = "US"
-		// }
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-		statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-		// statusType := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["type"].(string)
-		statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-		// statusTF := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["status"].(string)
-		statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-		clusterStatus := "Healthy"
 
-		if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-			clusterStatus = "Unhealthy"
-			clusterUnHealthyCnt++
-		} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-			clusterStatus = "Healthy"
-			clusterHealthyCnt++
-		} else {
-			clusterStatus = "Unknown"
-			clusterUnknownCnt++
-		}
-
-		clusterUrl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, clusterUrl, ch)
+		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+		go CallAPI(token, url, ch)
 		clusters := <-ch
 		clusterData := clusters.data
-		provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+
 		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		fmt.Println(joinStatus + " : " + provider)
-		// fmt.Println("##############", clusterlist)
-		// fmt.Println("##############", clusterlist[region])
+		if joinStatus == "JOIN" {
+			region := ""
+			zone := ""
+			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+			clusterStatus := "Healthy"
 
-		clusterlist[region] =
-			Region{
-				region,
-				Attributes{clusterStatus, "", ""},
-				append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, "", ""}})}
+			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+				clusterStatus = "Unhealthy"
+				clusterUnHealthyCnt++
+			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+				clusterStatus = "Healthy"
+				clusterHealthyCnt++
+			} else {
+				clusterStatus = "Unknown"
+				clusterUnknownCnt++
+			}
 
-		resJoinedClusters.Children = append(resJoinedClusters.Children, ChildNode{clustername, Attributes{clusterStatus, zone, region}})
-		clusternames = append(clusternames, clustername)
+			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+
+			fmt.Println(region + " : " + zone + " : " + provider)
+
+			clusterlist[region] =
+				Region{
+					region,
+					Attributes{clusterStatus, region, zone},
+					append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
+
+			jcinfoList["OMCP-Master"] =
+				JoinedClusters{
+					"OMCP-Master",
+					Attributes{clusterStatus, region, zone},
+					append(jcinfoList["OMCP-Master"].Children, ChildNode{clustername, Attributes{clusterStatus, zone, region}})}
+
+			clusternames = append(clusternames, clustername)
+		} else {
+			jcinfoList["UnJoined"] =
+				JoinedClusters{
+					"UnJoined",
+					Attributes{"Unknown", "Unknown", "Unknown"},
+					append(jcinfoList["UnJoined"].Children, ChildNode{clustername, Attributes{"Unknown", "Unknown", "Unknown"}})}
+		}
+	}
+
+	for _, outp := range jcinfoList {
+		resCluster.JoinedClusters = append(resCluster.JoinedClusters, outp)
 	}
 
 	for _, outp := range clusterlist {
@@ -388,7 +369,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Healthy", clusterHealthyCnt})
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Unhealthy", clusterUnHealthyCnt})
 	resCluster.Clusters.ClustersStatus = append(resCluster.Clusters.ClustersStatus, NameVal{"Unknown", clusterUnknownCnt})
-	resCluster.JoinedClusters = resJoinedClusters
+	// resCluster.JoinedClusters = resJoinedClusters
 	json.NewEncoder(w).Encode(resCluster)
 }
 
