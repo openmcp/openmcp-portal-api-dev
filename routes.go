@@ -184,7 +184,56 @@ var routes = Routes{
 		"dashboard",
 		"GET",
 		"/apis/dashboard",
-		Dashboard,
+		handler.Dashboard,
+	},
+
+	Route{
+		"dashboardstatus",
+		"GET",
+		"/apis/dashboard/status",
+		handler.DbStatus,
+	},
+
+	Route{
+		"dashboardregiongroups",
+		"GET",
+		"/apis/dashboard/region_groups",
+		handler.DbRegionGroups,
+	},
+
+	Route{
+		"dashboardomcp",
+		"GET",
+		"/apis/dashboard/omcp",
+		handler.DbOmcp,
+	},
+
+	Route{
+		"dashboardworldclustermap",
+		"GET",
+		"/apis/dashboard/world_cluster_map",
+		handler.DbWorldClusterMap,
+	},
+
+	Route{
+		"dashboardClusterTopology",
+		"POST",
+		"/apis/dashboard/cluster_topology",
+		handler.DbClusterTopology,
+	},
+
+	Route{
+		"dashboardServiceTopology",
+		"POST",
+		"/apis/dashboard/service_topology",
+		handler.DbServiceTopology,
+	},
+
+	Route{
+		"dashboardServiceRegionTopology",
+		"POST",
+		"/apis/dashboard/service_region_topology",
+		handler.DbServiceRegionTopology,
 	},
 
 	Route{

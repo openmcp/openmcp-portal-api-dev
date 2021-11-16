@@ -15,9 +15,11 @@ import (
 func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	fmt.Println("GetJoinedClusters")
 
 	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+	fmt.Println("clusterurl : " + clusterurl)
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -29,12 +31,14 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+		fmt.Println(joinStatus)
 
 		if joinStatus == "JOIN" {
 			clusterName := GetStringElement(element, []string{"metadata", "name"})
 			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 
 			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+			fmt.Println(clusterurl)
 			go CallAPI(token, clusterurl, ch)
 			clusters := <-ch
 			clusterData := clusters.data
@@ -43,6 +47,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 			if clusterType == "Ready" {
 				clusterNames = append(clusterNames, clusterName)
+				fmt.Println(clusterNames)
 				cluster.Name = clusterName
 				cluster.Provider = provider
 
@@ -67,6 +72,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 		// get node names, cpu(capacity)
 		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
+		fmt.Println(nodeURL)
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
@@ -134,6 +140,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			memoryCapSum += memoryCapInt
 
 			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
+
+			fmt.Println(clMetricURL)
 			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name)
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
@@ -236,23 +244,23 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 		// fmt.Println(fsUseSumS, fsCapSumS)
 
-		var cpuStatus []NameVal
-		var memStatus []NameVal
-		var fsStatus []NameVal
+		var cpuStatus []NameFloatVal
+		var memStatus []NameFloatVal
+		var fsStatus []NameFloatVal
 
-		cpuStatus = append(cpuStatus, NameVal{"Used", cpuUseSumF})
-		cpuStatus = append(cpuStatus, NameVal{"Total", float64(cpuCapSum)})
+		cpuStatus = append(cpuStatus, NameFloatVal{"Used", cpuUseSumF})
+		cpuStatus = append(cpuStatus, NameFloatVal{"Total", float64(cpuCapSum)})
 		cpuUnit := Unit{"core", cpuStatus}
 
-		memStatus = append(memStatus, NameVal{"Used", memoryUseSumF})
-		memStatus = append(memStatus, NameVal{"Total", memoryCapSumF})
+		memStatus = append(memStatus, NameFloatVal{"Used", memoryUseSumF})
+		memStatus = append(memStatus, NameFloatVal{"Total", memoryCapSumF})
 		memUnit := Unit{"Gi", memStatus}
 
-		fsStatus = append(fsStatus, NameVal{"Used", fsUseSumF})
+		fsStatus = append(fsStatus, NameFloatVal{"Used", fsUseSumF})
 		if fsCapSumF == 0 {
 			fsCapSumF = 100.0
 		}
-		fsStatus = append(fsStatus, NameVal{"Total", fsCapSumF})
+		fsStatus = append(fsStatus, NameFloatVal{"Total", fsCapSumF})
 		fsUnit := Unit{"Gi", fsStatus}
 
 		resUsage := ClusterResourceUsage{cpuUnit, memUnit, fsUnit}
@@ -264,7 +272,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
 		resCluster.Clusters[i].ResourceUsage = resUsage
 	}
-	// fmt.Println(resCluster.Clusters)
+	fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
@@ -644,17 +652,17 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		var cpuStaus []NameVal
-		var memStaus []NameVal
-		var fsStaus []NameVal
-		cpuStaus = append(cpuStaus, NameVal{"Used", math.Ceil(nodeResCPUSumStr*100) / 100})
+		var cpuStaus []NameFloatVal
+		var memStaus []NameFloatVal
+		var fsStaus []NameFloatVal
+		cpuStaus = append(cpuStaus, NameFloatVal{"Used", math.Ceil(nodeResCPUSumStr*100) / 100})
 		// cpuStaus = append(cpuStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
-		cpuStaus = append(cpuStaus, NameVal{"Total", math.Ceil(float64(clusterCPUCapSum)/1000/1000/1000*100) / 100})
-		memStaus = append(memStaus, NameVal{"Used", math.Ceil(nodeResMemSumStr*100) / 100})
+		cpuStaus = append(cpuStaus, NameFloatVal{"Total", math.Ceil(float64(clusterCPUCapSum)/1000/1000/1000*100) / 100})
+		memStaus = append(memStaus, NameFloatVal{"Used", math.Ceil(nodeResMemSumStr*100) / 100})
 		// memStaus = append(memStaus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
-		memStaus = append(memStaus, NameVal{"Total", math.Ceil(float64(clusterMemoryCapSum)/1000/1000*100) / 100})
-		fsStaus = append(fsStaus, NameVal{"Used", math.Ceil(nodeResFSSumStr*100) / 100})
-		fsStaus = append(fsStaus, NameVal{"Total", math.Ceil(nodeResFSCapaSumStr*100) / 100})
+		memStaus = append(memStaus, NameFloatVal{"Total", math.Ceil(float64(clusterMemoryCapSum)/1000/1000*100) / 100})
+		fsStaus = append(fsStaus, NameFloatVal{"Used", math.Ceil(nodeResFSSumStr*100) / 100})
+		fsStaus = append(fsStaus, NameFloatVal{"Total", math.Ceil(nodeResFSCapaSumStr*100) / 100})
 		cpuUnit := Unit{"core", cpuStaus}
 		memUnit := Unit{"Gi", memStaus}
 		fsUnit := Unit{"Gi", fsStaus}

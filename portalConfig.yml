@@ -3,7 +3,7 @@ portal:
     port:       30000
     kubeconfig: config   
     openmcpclustername : openmcp
-# 31635
+
     
 
     

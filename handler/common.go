@@ -970,3 +970,18 @@ func GetJsonBody(rbody io.Reader) map[string]interface{} {
 	json.Unmarshal([]byte(bodyBytes), &data)
 	return data
 }
+
+func IsContains(slice []string, item string) bool {
+	set := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		set[s] = struct{}{}
+	}
+
+	_, ok := set[item]
+	return ok
+}
+
+func GetSystemNamespace() []string {
+	systemNamespaces := []string{"kube-system", "openmcp", "kube-federation-system", "metallb-system", "monitoring", "istio-system", "ingress-nginx"}
+	return systemNamespaces
+}

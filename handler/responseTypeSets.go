@@ -1,5 +1,56 @@
 package handler
 
+type NameIntVal struct {
+	Name  string `json:"name"`
+	Value int    `json:"value"`
+}
+
+type Attributes struct {
+	Status string `json:"status"`
+	Region string `json:"region"`
+	Zone   string `json:"zone"`
+	// Attributes struct {
+	// 	Status string `json:"status"`
+	// } `json:"attributes"`
+}
+type ChildNode struct {
+	Name       string     `json:"name"`
+	Attributes Attributes `json:"attributes"`
+}
+
+type Region struct {
+	Name       string      `json:"name"`
+	Attributes Attributes  `json:"attributes"`
+	Children   []ChildNode `json:"children"`
+}
+
+type JoinedClusters struct {
+	Name       string      `json:"name"`
+	Attributes Attributes  `json:"attributes"`
+	Children   []ChildNode `json:"children"`
+}
+
+type DashboardRes struct {
+	Clusters struct {
+		ClustersCnt    int          `json:"counts"`
+		ClustersStatus []NameIntVal `json:"status"`
+	} `json:"clusters"`
+	Nodes struct {
+		NodesCnt    int          `json:"counts"`
+		NodesStatus []NameIntVal `json:"status"`
+	} `json:"nodes"`
+	Pods struct {
+		PodsCnt    int          `json:"counts"`
+		PodsStatus []NameIntVal `json:"status"`
+	} `json:"pods"`
+	Projects struct {
+		ProjectsCnt    int          `json:"counts"`
+		ProjectsStatus []NameIntVal `json:"status"`
+	} `json:"projects"`
+	Regions        []Region         `json:"regions"`
+	JoinedClusters []JoinedClusters `json:"joined_clusters"`
+}
+
 type ClustersRes struct {
 	Clusters []ClusterInfo `json:"clusters"`
 }
@@ -311,11 +362,11 @@ type ClusterResourceUsage struct {
 }
 
 type Unit struct {
-	Unit    string    `json:"unit"`
-	NameVal []NameVal `json:"status"`
+	Unit    string         `json:"unit"`
+	NameVal []NameFloatVal `json:"status"`
 }
 
-type NameVal struct {
+type NameFloatVal struct {
 	Name  string  `json:"name"`
 	Value float64 `json:"value"`
 }
@@ -521,15 +572,17 @@ type MigrationRes struct {
 }
 
 type MigrationInfo struct {
-	Name          string `json:"name"`
-	Deployment    string `json:"deployment"`
-	SourceCluster string `json:"sourceCluster"`
-	TargetCluster string `json:"targetCluster"`
-	Mamespace     string `json:"namespace"`
-	Status        string `json:"status"`
-	Reason        string `json:"reason"`
-	CreationTime  string `json:"creationTime"`
-	ElapsedTime   string `json:"elapsedTime"`
+	Name           string `json:"name"`
+	Deployment     string `json:"deployment"`
+	SourceCluster  string `json:"sourceCluster"`
+	TargetCluster  string `json:"targetCluster"`
+	Namespace      string `json:"namespace"`
+	CreationTime   string `json:"creationTime"`
+	Description    string `json:"description"`
+	ElapsedTime    string `json:"elapsedTime"`
+	IsZeroDownTime string `json:"isZeroDownTime"`
+	Progress       string `json:"progress"`
+	Status         string `json:"status"`
 }
 
 type SnapshotRes struct {
@@ -576,4 +629,9 @@ type SnapshotLogSubInfo struct {
 	Namespace    string `json:"namespace"`
 	Type         string `json:"type"`
 	SnapshotKey  string `json:"snapshot_key"`
+}
+
+type WorldMapClusterInfo struct {
+	Country string `json:"country"`
+	Value   int    `json:"value"`
 }

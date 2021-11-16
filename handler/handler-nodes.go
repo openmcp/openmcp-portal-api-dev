@@ -596,23 +596,23 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		var cpuStatus []NameVal
-		var memStatus []NameVal
-		var fsStatus []NameVal
-		var podStatus []NameVal
-		cpuStatus = append(cpuStatus, NameVal{"Used", math.Ceil(cpuUseFloat/1000/1000/1000*100) / 100})
-		cpuStatus = append(cpuStatus, NameVal{"Total", cpuCapFloat})
+		var cpuStatus []NameFloatVal
+		var memStatus []NameFloatVal
+		var fsStatus []NameFloatVal
+		var podStatus []NameFloatVal
+		cpuStatus = append(cpuStatus, NameFloatVal{"Used", math.Ceil(cpuUseFloat/1000/1000/1000*100) / 100})
+		cpuStatus = append(cpuStatus, NameFloatVal{"Total", cpuCapFloat})
 		// cpuStatus = append(cpuStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
 
-		memStatus = append(memStatus, NameVal{"Used", math.Ceil(memoryUseFloat/1000/1000*100) / 100})
-		memStatus = append(memStatus, NameVal{"Total", math.Ceil(float64(memoryCapFloat)/1000/1000*100) / 100})
+		memStatus = append(memStatus, NameFloatVal{"Used", math.Ceil(memoryUseFloat/1000/1000*100) / 100})
+		memStatus = append(memStatus, NameFloatVal{"Total", math.Ceil(float64(memoryCapFloat)/1000/1000*100) / 100})
 		// memStatus = append(memStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
 
-		fsStatus = append(fsStatus, NameVal{"Used", math.Ceil(fsUseFloat/1000/1000*100) / 100})
-		fsStatus = append(fsStatus, NameVal{"Total", math.Ceil(fsCapaUseFloat/1000/1000*100) / 100})
+		fsStatus = append(fsStatus, NameFloatVal{"Used", math.Ceil(fsUseFloat/1000/1000*100) / 100})
+		fsStatus = append(fsStatus, NameFloatVal{"Total", math.Ceil(fsCapaUseFloat/1000/1000*100) / 100})
 
-		podStatus = append(podStatus, NameVal{"Used", float64(podUseCount)})
-		podStatus = append(podStatus, NameVal{"Total", math.Ceil(podCapaUseCount*100) / 100})
+		podStatus = append(podStatus, NameFloatVal{"Used", float64(podUseCount)})
+		podStatus = append(podStatus, NameFloatVal{"Total", math.Ceil(podCapaUseCount*100) / 100})
 
 		cpuUnit := Unit{"core", cpuStatus}
 		memUnit := Unit{"Gi", memStatus}
@@ -725,20 +725,20 @@ func NodesMetric(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			var cpuStatus []NameVal
-			var memStatus []NameVal
-			var fsStatus []NameVal
+			var cpuStatus []NameFloatVal
+			var memStatus []NameFloatVal
+			var fsStatus []NameFloatVal
 
-			cpuStatus = append(cpuStatus, NameVal{"Used", math.Ceil(cpuUseFloat/1000/1000/1000*100) / 100})
-			cpuStatus = append(cpuStatus, NameVal{"Total", cpuCapFloat})
+			cpuStatus = append(cpuStatus, NameFloatVal{"Used", math.Ceil(cpuUseFloat/1000/1000/1000*100) / 100})
+			cpuStatus = append(cpuStatus, NameFloatVal{"Total", cpuCapFloat})
 			// cpuStatus = append(cpuStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterCPUCapSum)/1000/1000/1000)})
 
-			memStatus = append(memStatus, NameVal{"Used", math.Ceil(memoryUseFloat/1000/1000*100) / 100})
-			memStatus = append(memStatus, NameVal{"Total", math.Ceil(float64(memoryCapFloat)/1000/1000*100) / 100})
+			memStatus = append(memStatus, NameFloatVal{"Used", math.Ceil(memoryUseFloat/1000/1000*100) / 100})
+			memStatus = append(memStatus, NameFloatVal{"Total", math.Ceil(float64(memoryCapFloat)/1000/1000*100) / 100})
 			// memStatus = append(memStatus, NameVal{"Total", fmt.Sprintf("%.1f", float64(clusterMemoryCapSum)/1000/1000)})
 
-			fsStatus = append(fsStatus, NameVal{"Used", math.Ceil(fsUseFloat/1000/1000*100) / 100})
-			fsStatus = append(fsStatus, NameVal{"Total", math.Ceil(fsCapaUseFloat/1000/1000*100) / 100})
+			fsStatus = append(fsStatus, NameFloatVal{"Used", math.Ceil(fsUseFloat/1000/1000*100) / 100})
+			fsStatus = append(fsStatus, NameFloatVal{"Total", math.Ceil(fsCapaUseFloat/1000/1000*100) / 100})
 
 			cpuUnit := Unit{"core", cpuStatus}
 			memUnit := Unit{"Gi", memStatus}

@@ -21,27 +21,24 @@ func MigrationLog(w http.ResponseWriter, r *http.Request) {
 	for _, element := range migItems {
 		name := GetStringElement(element, []string{"metadata", "name"})
 		creationTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-		deployment := GetStringElement(element, []string{"spec", "MigrationServiceSource", "MigrationSource", "ResourceName"})
-		sourceCluster := GetStringElement(element, []string{"spec", "MigrationServiceSource", "SourceCluster"})
-		targetCluster := GetStringElement(element, []string{"spec", "MigrationServiceSource", "TargetCluster"})
-		namespace := GetStringElement(element, []string{"spec", "MigrationServiceSource", "NameSpace"})
-		statusBool := GetBoolElement(element, []string{"status", "MigrationStatus"})
+
+		deployment := GetStringElement(element, []string{"spec", "migrationServiceSource", "migrationSource", "resourceName"})
+		sourceCluster := GetStringElement(element, []string{"spec", "migrationServiceSource", "sourceCluster"})
+		targetCluster := GetStringElement(element, []string{"spec", "migrationServiceSource", "targetCluster"})
+		namespace := GetStringElement(element, []string{"spec", "migrationServiceSource", "nameSpace"})
+		description := GetStringElement(element, []string{"status", "description"})
+		elapsedTime := GetStringElement(element, []string{"status", "elapsedTime"})
+		isZeroDownTime := GetStringElement(element, []string{"status", "isZeroDownTime"})
+		progress := GetStringElement(element, []string{"status", "progress"})
+		statusBool := GetStringElement(element, []string{"status", "status"})
 		status := "Fail"
-		if statusBool {
+		if statusBool == "True" {
 			status = "Success"
-		}
-		reasonObj := GetStringElement(element, []string{"status", "Reason"})
-		reason := ""
-		if len(reasonObj) > 0 {
-			slice := strings.Split(reasonObj, ",")
-			reason = strings.Replace(slice[1], "\"", "", -1)
-			reason = strings.Replace(reason, "\\", "\"", -1)
-			reason = strings.Replace(reason, "Reason:", "", -1)
+		} else if statusBool == "Running" {
+			status = "Running"
 		}
 
-		elapsedTime := GetStringElement(element, []string{"status", "ElapsedTime"})
-
-		migRes.MigrationInfo = append(migRes.MigrationInfo, MigrationInfo{name, deployment, sourceCluster, targetCluster, namespace, status, reason, creationTime, elapsedTime})
+		migRes.MigrationInfo = append(migRes.MigrationInfo, MigrationInfo{name, deployment, sourceCluster, targetCluster, namespace, creationTime, description, elapsedTime, isZeroDownTime, progress, status})
 	}
 	json.NewEncoder(w).Encode(migRes.MigrationInfo)
 }
@@ -70,7 +67,7 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 		if dataRes["kind"].(string) == "Status" {
 			msg = jsonErr{501, "failed", dataRes["message"].(string)}
 		} else {
-			msg = jsonErr{200, "success", "Cluster Join Completed"}
+			msg = jsonErr{200, "success", "Migration Completed"}
 		}
 	}
 
