@@ -91,26 +91,42 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 	snapData := result.data
 	snapItems := snapData["items"].([]interface{})
 
-	for index, element := range snapItems {
-		statusBool := GetBoolElement(element, []string{"status", "Status"})
+	for _, element := range snapItems {
 
-		if statusBool {
-			status := "Fail"
-			if statusBool {
-				status = "Success"
-			}
+		statusBool := GetStringElement(element, []string{"status", "status"})
+		status := "Fail"
+
+		if statusBool == "True" {
+			// progress := GetStringElement(element, []string{"status", "progress"})
+			status = "Success"
 
 			snapshotName := GetStringElement(element, []string{"metadata", "name"})
 			creationTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			sources := GetArrayElement(element, []string{"spec", "snapshotSources"})
-
+			groupSnapshotkey := GetStringElement(element, []string{"spec", "groupSnapshotKey"})
+			spaceSnapshotSources := GetArrayElement(element, []string{"spec", "snapshotSources"})
 			deployment := ""
 			cluster := ""
-			for _, item := range sources {
+
+			for _, item := range spaceSnapshotSources {
 				resourceType := GetStringElement(item, []string{"resourceType"})
 				if resourceType == "Deployment" {
 					cluster = GetStringElement(item, []string{"resourceCluster"})
 					deployment = GetStringElement(item, []string{"resourceName"})
+				}
+			}
+
+			volumeSize := ""
+			statusSnapshotSource := GetArrayElement(element, []string{"status", "snapshotSource"})
+			for _, item := range statusSnapshotSource {
+				resourceType := GetStringElement(item, []string{"resourceType"})
+				if resourceType == "PersistentVolume" {
+					snapshotVolumes := GetArrayElement(item, []string{"VolumeInfo"})
+					for _, vol := range snapshotVolumes {
+						if groupSnapshotkey == GetStringElement(vol, []string{"volumeSnapshotKey"}) {
+							volumeSize = GetStringElement(vol, []string{"volumeSnapshotSize"})
+						}
+					}
+
 				}
 			}
 
@@ -122,7 +138,8 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 			snapSubInfo.CreationTime = creationTime
 			snapSubInfo.Cluster = cluster
 			snapSubInfo.Deployment = deployment
-			snapSubInfo.Increment = float64(100 / (index + 1))
+			size, _ := strconv.ParseFloat(volumeSize, 64)
+			snapSubInfo.Increment = size
 
 			snapSubs = append(snapSubs, snapSubInfo)
 			cluDep := cluster + deployment
@@ -198,21 +215,26 @@ func SnapshotLog(w http.ResponseWriter, r *http.Request) {
 		//main
 		snapshotName := GetStringElement(element, []string{"metadata", "name"})
 		namespace := GetStringElement(element, []string{"metadata", "namespace"})
-		statusBool := GetBoolElement(element, []string{"status", "Status"})
-		status := "Fail"
-		if statusBool {
-			status = "Success"
-		}
-		reasonObj := GetStringElement(element, []string{"status", "Reason"})
-		reason := ""
-		if len(reasonObj) > 0 {
-			slice := strings.Split(reasonObj, ",")
-			reason = strings.Replace(slice[3], "\"", "", -1)
-			reason = strings.Replace(reason, "\\", "\"", -1)
-			reason = strings.Replace(reason, "Reason:", "", -1)
-		}
+		statusBool := GetStringElement(element, []string{"status", "status"})
+		status := statusBool
+		// status := "Fail"
+		// if statusBool == "True" {
+		// 	status = "Success"
+		// }
+
+		description := GetStringElement(element, []string{"status", "description"})
+		// reasonObj := GetStringElement(element, []string{"status", "reason"})
+		// reason := ""
+
+		// if reasonObj != "-" {
+		// 	slice := strings.Split(reasonObj, ",")
+		// 	reason = strings.Replace(slice[3], "\"", "", -1)
+		// 	reason = strings.Replace(reason, "\\", "\"", -1)
+		// 	reason = strings.Replace(reason, "Reason:", "", -1)
+		// }
 		creationTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-		elapsedTime := GetStringElement(element, []string{"status", "ElapsedTime"})
+		elapsedTime := GetStringElement(element, []string{"status", "elapsedTime"})
+		progress := GetStringElement(element, []string{"status", "progress"})
 		snapSubInfo := SnapshotLogSubInfo{}
 		snapSubs := []SnapshotLogSubInfo{}
 
@@ -232,7 +254,7 @@ func SnapshotLog(w http.ResponseWriter, r *http.Request) {
 			snapSubs = append(snapSubs, snapSubInfo)
 		}
 
-		snapRes.SnpashotLogInfo = append(snapRes.SnpashotLogInfo, SnpashotLogInfo{"snapshot", snapshotName, deployment, namespace, status, reason, snapshotKey, creationTime, elapsedTime, snapSubs})
+		snapRes.SnpashotLogInfo = append(snapRes.SnpashotLogInfo, SnpashotLogInfo{"snapshot", snapshotName, deployment, namespace, status, description, snapshotKey, creationTime, elapsedTime, progress, snapSubs})
 	}
 
 	for _, element := range restoreItems {
@@ -240,42 +262,49 @@ func SnapshotLog(w http.ResponseWriter, r *http.Request) {
 		if element.(map[string]interface{})["status"] != nil {
 			restoreName := GetStringElement(element, []string{"metadata", "name"})
 			namespace := GetStringElement(element, []string{"metadata", "namespace"})
-			statusBool := GetBoolElement(element, []string{"status", "Status"})
-			status := "Fail"
-			if statusBool {
-				status = "Success"
-			}
-			reasonObj := GetStringElement(element, []string{"status", "Reason"})
-			reason := ""
-			if len(reasonObj) > 0 {
-				slice := strings.Split(reasonObj, ",")
-				reason = strings.Replace(slice[1], "\"", "", -1)
-				reason = strings.Replace(reason, "\\", "\"", -1)
-				reason = strings.Replace(reason, "Reason:", "", -1)
-				reason = strings.Replace(reason, "}", "", -1)
-			}
+			statusBool := GetStringElement(element, []string{"status", "status"})
+			status := statusBool //True, Running, False
+
+			description := GetStringElement(element, []string{"status", "description"})
+			// reasonObj := GetStringElement(element, []string{"status", "reason"})
+			// reason := ""
+
+			// if reasonObj != "-" {
+			// 	slice := strings.Split(reasonObj, ",")
+			// 	reason = strings.Replace(slice[1], "\"", "", -1)
+			// 	reason = strings.Replace(reason, "\\", "\"", -1)
+			// 	reason = strings.Replace(reason, "Reason:", "", -1)
+			// 	reason = strings.Replace(reason, "}", "", -1)
+			// }
+
 			creationTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			elapsedTime := GetStringElement(element, []string{"status", "ElapsedTime"})
+			elapsedTime := GetStringElement(element, []string{"status", "elapsedTime"})
+			progress := GetStringElement(element, []string{"status", "progress"})
 			snapSubInfo := SnapshotLogSubInfo{}
 			snapSubs := []SnapshotLogSubInfo{}
 
 			snapshotKey := GetStringElement(element, []string{"spec", "groupSnapshotKey"})
-			sources := GetArrayElement(element, []string{"spec", "snapshotRestoreSource"})
+			sources := GetArrayElement(element, []string{"status", "snapshotRestoreSource"})
 			deployment := ""
+
 			for _, item := range sources {
 				resourceType := GetStringElement(item, []string{"resourceType"})
 				if resourceType == "Deployment" {
-					deployment = GetStringElement(item, []string{"resourceName"})
+					resourceSnapshotKey := GetStringElement(item, []string{"resourceSnapshotKey"})
+
+					slice := strings.Split(resourceSnapshotKey, "/")
+					deployment = slice[len(slice)-1]
+
+					snapSubInfo.Cluster = GetStringElement(item, []string{"resourceCluster"})
+					snapSubInfo.Namespace = GetStringElement(item, []string{"resourceNamespace"})
+					snapSubInfo.Type = resourceType
+					snapSubInfo.SnapshotKey = GetStringElement(item, []string{"resourceSnapshotKey"})
 				}
-				snapSubInfo.Cluster = GetStringElement(item, []string{"resourceCluster"})
 				snapSubInfo.ResourceName = "-"
-				snapSubInfo.Namespace = GetStringElement(item, []string{"resourceNamespace"})
-				snapSubInfo.Type = GetStringElement(item, []string{"resourceType"})
-				snapSubInfo.SnapshotKey = GetStringElement(item, []string{"resourceSnapshotKey"})
 				snapSubs = append(snapSubs, snapSubInfo)
 			}
 
-			snapRes.SnpashotLogInfo = append(snapRes.SnpashotLogInfo, SnpashotLogInfo{"restore", restoreName, deployment, namespace, status, reason, snapshotKey, creationTime, elapsedTime, snapSubs})
+			snapRes.SnpashotLogInfo = append(snapRes.SnpashotLogInfo, SnpashotLogInfo{"restore", restoreName, deployment, namespace, status, description, snapshotKey, creationTime, elapsedTime, progress, snapSubs})
 		}
 		//main
 	}
@@ -336,22 +365,31 @@ func SnapshotRestore(w http.ResponseWriter, r *http.Request) {
 	result := <-ch
 	snapData := result.data
 
+	// apiVersion: openmcp.k8s.io/v1alpha1
+	// kind: SnapshotRestore
+	// metadata:
+	// 	name: example-snapshotrestore-group
+	// spec:
+	// 	groupSnapshotKey: "1636967136"
+	// 	isGroupSnapshot: true
+
 	var msg jsonErr
-	if snapData["kind"].(string) == "Snapshot" && GetBoolElement(snapData["status"], []string{"Status"}) {
+	if snapData["kind"].(string) == "Snapshot" && GetStringElement(snapData["status"], []string{"status"}) == "True" {
 		apiVersion := snapData["apiVersion"].(string)
 		kind := "SnapshotRestore"
 		groupSnapshotKey := GetStringElement(snapData["spec"], []string{"groupSnapshotKey"})
-		// isGroupSnapshot := true //GetBoolElement(snapData["spec"], []string{"isGroupSnapshot"})
+		isGroupSnapshot := true //GetBoolElement(snapData["spec"], []string{"isGroupSnapshot"})
 
-		snapshotSource := snapData["status"].(map[string]interface{})["snapshotSource"].([]interface{})
+		// snapshotSource := snapData["status"].(map[string]interface{})["snapshotSource"].([]interface{})
+
 		type MetaData struct {
 			Name string `json:"name"`
 		}
 
 		type Spec struct {
 			GroupSnapshotKey string `json:"groupSnapshotKey"`
-			// IsGroupSnapshot  bool          `json:"isGroupSnapshot"`
-			SnapshotRestoreSource []interface{} `json:"snapshotRestoreSource"`
+			IsGroupSnapshot  bool   `json:"isGroupSnapshot"`
+			// SnapshotRestoreSource []interface{} `json:"snapshotRestoreSource"`
 		}
 
 		type RestoreInfo struct {
@@ -361,7 +399,7 @@ func SnapshotRestore(w http.ResponseWriter, r *http.Request) {
 			Spec       Spec     `json:"spec"`
 		}
 
-		value := RestoreInfo{apiVersion, kind, MetaData{restoreName}, Spec{groupSnapshotKey, snapshotSource}}
+		value := RestoreInfo{apiVersion, kind, MetaData{restoreName}, Spec{groupSnapshotKey, isGroupSnapshot}}
 		e, err := json.Marshal(value)
 
 		var dataRes2 map[string]interface{}

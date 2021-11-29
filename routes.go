@@ -529,4 +529,25 @@ var routes = Routes{
 		"/apis/policy/openmcp/edit",
 		handler.UpdateOpenmcpPolicy,
 	},
+
+	Route{
+		"settings",
+		"GET",
+		"/apis/metric/clusterlist",
+		handler.ClusterList,
+	},
+
+	Route{
+		"settings",
+		"GET",
+		"/apis/metric/namespacelist",
+		handler.NamespaceList,
+	},
+
+	Route{
+		"settings",
+		"GET",
+		"/apis/metric/nodelist",
+		handler.NodeList,
+	},
 }

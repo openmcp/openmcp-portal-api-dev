@@ -38,7 +38,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 
 			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
-			fmt.Println(clusterurl)
 			go CallAPI(token, clusterurl, ch)
 			clusters := <-ch
 			clusterData := clusters.data

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
@@ -206,14 +207,57 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	clusters := <-ch
 	clusterData := clusters.data
 
-	resCluster := DashboardRes{}
+	type ClusterAttribute struct {
+		Status   string `json:"status"`
+		Region   string `json:"region"`
+		Zone     string `json:"zone"`
+		Endpoint string `json:"endpoint"`
+		// Attributes struct {
+		// 	Status string `json:"status"`
+		// } `json:"attributes"`
+	}
 
-	var jcinfoList = make(map[string]JoinedClusters)
+	type ClusterChildNode struct {
+		Name       string           `json:"name"`
+		Attributes ClusterAttribute `json:"attributes"`
+	}
+
+	type DashJoinedClusters struct {
+		Name       string             `json:"name"`
+		Attributes Attributes         `json:"attributes"`
+		Children   []ClusterChildNode `json:"children"`
+	}
+
+	type DashboardClusterRes struct {
+		Clusters struct {
+			ClustersCnt    int          `json:"counts"`
+			ClustersStatus []NameIntVal `json:"status"`
+		} `json:"clusters"`
+		Nodes struct {
+			NodesCnt    int          `json:"counts"`
+			NodesStatus []NameIntVal `json:"status"`
+		} `json:"nodes"`
+		Pods struct {
+			PodsCnt    int          `json:"counts"`
+			PodsStatus []NameIntVal `json:"status"`
+		} `json:"pods"`
+		Projects struct {
+			ProjectsCnt    int          `json:"counts"`
+			ProjectsStatus []NameIntVal `json:"status"`
+		} `json:"projects"`
+		Regions        []Region             `json:"regions"`
+		JoinedClusters []DashJoinedClusters `json:"joined_clusters"`
+	}
+
+	resCluster := DashboardClusterRes{}
+
+	var jcinfoList = make(map[string]DashJoinedClusters)
 	var clusterlist = make(map[string]Region)
 	var clusternames []string
 	clusterHealthyCnt := 0
 	clusterUnHealthyCnt := 0
 	clusterUnknownCnt := 0
+
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
@@ -223,8 +267,24 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 		clusters := <-ch
 		clusterData := clusters.data
 
+		// https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
+
+		clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clustername + "/?clustername=openmcp"
+		go CallAPI(token, clusterurl, ch)
+		clusters2 := <-ch
+		clusterData2 := clusters2.data
+
+		endpoint := ""
+
+		endpoint = GetStringElement(clusterData2, []string{"spec", "apiEndpoint"})
+		endpoint = strings.Replace(endpoint, "https://", "", -1)
+		endpoint = strings.Replace(endpoint, "http://", "", -1)
+		address := strings.Split(endpoint, ":")
+		endpoint = address[0]
+
 		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 		if joinStatus == "JOIN" {
+
 			region := ""
 			zone := ""
 			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
@@ -256,18 +316,18 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 					append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
 
 			jcinfoList["OpenMCP"] =
-				JoinedClusters{
+				DashJoinedClusters{
 					"OpenMCP",
 					Attributes{clusterStatus, region, zone},
-					append(jcinfoList["OpenMCP"].Children, ChildNode{clustername, Attributes{clusterStatus, zone, region}})}
+					append(jcinfoList["OpenMCP"].Children, ClusterChildNode{clustername, ClusterAttribute{clusterStatus, zone, region, endpoint}})}
 
 			clusternames = append(clusternames, clustername)
 		} else {
 			jcinfoList["UnJoined"] =
-				JoinedClusters{
+				DashJoinedClusters{
 					"UnJoined",
 					Attributes{"Unknown", "Unknown", "Unknown"},
-					append(jcinfoList["UnJoined"].Children, ChildNode{clustername, Attributes{"Unknown", "Unknown", "Unknown"}})}
+					append(jcinfoList["UnJoined"].Children, ClusterChildNode{clustername, ClusterAttribute{"Unknown", "Unknown", "Unknown", endpoint}})}
 		}
 	}
 
@@ -540,21 +600,28 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	type PodSubInfo struct {
+		Cluster   string `json:"cluster"`
+		Namespace string `json:"namespace"`
+	}
+
 	type Pods struct {
-		Id    string `json:"id"`
-		Name  string `json:"name"`
-		Path  string `json:"path"`
-		Value string `json:"value"`
-		Data  string `json:"data"`
+		Id     string     `json:"id"`
+		Name   string     `json:"name"`
+		Path   string     `json:"path"`
+		Value  string     `json:"value"`
+		Status string     `json:"status"`
+		Data   PodSubInfo `json:"data"`
 	}
 
 	type Clusters struct {
-		Id    string `json:"id"`
-		Name  string `json:"name"`
-		Path  string `json:"path"`
-		Value string `json:"value"`
-		Data  string `json:"data"`
-		Pods  []Pods `json:"children"`
+		Id     string `json:"id"`
+		Name   string `json:"name"`
+		Path   string `json:"path"`
+		Value  string `json:"value"`
+		Data   string `json:"data"`
+		Status string `json:"status"`
+		Pods   []Pods `json:"children"`
 	}
 
 	type ClusterTopology struct {
@@ -613,7 +680,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 			cluster.Name = clustername
 			cluster.Path = pathCluster
 			cluster.Value = "30"
-			cluster.Data = clusterStatus
+			cluster.Status = clusterStatus
 
 			// GET PODS
 			podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
@@ -627,7 +694,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				pod := Pods{}
 				podName := GetStringElement(element, []string{"metadata", "name"})
 				status := GetStringElement(element, []string{"status", "phase"})
-				// project := GetStringElement(element, []string{"metadata", "namespace"})
+				namespace := GetStringElement(element, []string{"metadata", "namespace"})
 				// podIP := "-"
 				// node := "-"
 				// nodeIP := "-"
@@ -644,7 +711,9 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				pod.Name = podName
 				pod.Value = "5"
 				pod.Path = pathPod
-				pod.Data = status
+				pod.Status = status
+				podData := PodSubInfo{clustername, namespace}
+				pod.Data = podData
 				cluster.Pods = append(cluster.Pods, pod)
 			}
 
@@ -687,22 +756,29 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	type PodSubInfo struct {
+		Cluster   string `json:"cluster"`
+		Namespace string `json:"namespace"`
+	}
+
 	type Pods struct {
-		Id    string `json:"id"`
-		Name  string `json:"name"`
-		Path  string `json:"path"`
-		Value string `json:"value"`
-		Data  string `json:"data"`
+		Id     string     `json:"id"`
+		Name   string     `json:"name"`
+		Path   string     `json:"path"`
+		Value  string     `json:"value"`
+		Status string     `json:"status"`
+		Data   PodSubInfo `json:"data"`
 	}
 
 	type Clusters struct {
-		Id    string `json:"id"`
-		Name  string `json:"name"`
-		Path  string `json:"path"`
-		Value string `json:"value"`
-		Data  string `json:"data"`
-		Pods  []Pods `json:"children"`
-		App   string `json:"app"`
+		Id     string `json:"id"`
+		Name   string `json:"name"`
+		Path   string `json:"path"`
+		Value  string `json:"value"`
+		Status string `json:"status"`
+		Data   string `json:"data"`
+		Pods   []Pods `json:"children"`
+		App    string `json:"app"`
 	}
 
 	type ServiceTopology struct {
@@ -795,11 +871,13 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 					pod.Name = podName
 					pod.Value = "5"
 					pod.Path = pathPod
-					pod.Data = status
-					fmt.Println(clustername + " : " + app)
+					pod.Status = status
+					podData := PodSubInfo{clustername, namespace}
+					pod.Data = podData
+					fmt.Println(clustername + " : " + app + pod.Data.Namespace)
 
 					serviceClusterlist[app] =
-						Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, append(serviceClusterlist[app].Pods, pod), app}
+						Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
 
 				}
 			}

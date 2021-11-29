@@ -616,10 +616,11 @@ type SnpashotLogInfo struct {
 	Deployment         string               `json:"deployment"`
 	Namespace          string               `json:"namespace"`
 	Status             string               `json:"status"`
-	Reason             string               `json:"reason"`
+	Description        string               `json:"description"`
 	SnapshotKey        string               `json:"snapshotkey"`
 	CreationTime       string               `json:"creationTime"`
 	ElapsedTime        string               `json:"elapsedTime"`
+	Progress           string               `json:"progress"`
 	SnapshotLogSubInfo []SnapshotLogSubInfo `json:"sub_info"`
 }
 
