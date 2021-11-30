@@ -695,26 +695,28 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				podName := GetStringElement(element, []string{"metadata", "name"})
 				status := GetStringElement(element, []string{"status", "phase"})
 				namespace := GetStringElement(element, []string{"metadata", "namespace"})
-				// podIP := "-"
-				// node := "-"
-				// nodeIP := "-"
-				// if status == "Running" {
-				// 	podIP = GetStringElement(element, []string{"status", "podIP"})
-				// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-				// 	node = GetStringElement(element, []string{"spec", "nodeName"})
-				// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-				// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-				// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
-				// }
+				if !IsContains(GetSystemNamespace(), namespace) {
+					// podIP := "-"
+					// node := "-"
+					// nodeIP := "-"
+					// if status == "Running" {
+					// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+					// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+					// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+					// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+					// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+					// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+					// }
 
-				pod.Id = region + "-" + clustername + "-" + podName
-				pod.Name = podName
-				pod.Value = "5"
-				pod.Path = pathPod
-				pod.Status = status
-				podData := PodSubInfo{clustername, namespace}
-				pod.Data = podData
-				cluster.Pods = append(cluster.Pods, pod)
+					pod.Id = region + "-" + clustername + "-" + podName
+					pod.Name = podName
+					pod.Value = "5"
+					pod.Path = pathPod
+					pod.Status = status
+					podData := PodSubInfo{clustername, namespace}
+					pod.Data = podData
+					cluster.Pods = append(cluster.Pods, pod)
+				}
 			}
 
 			// type ClusterTopology struct {
