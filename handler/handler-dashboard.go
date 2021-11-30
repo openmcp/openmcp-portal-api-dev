@@ -266,7 +266,7 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
 			clusters := <-ch
@@ -369,7 +369,7 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
@@ -447,7 +447,7 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
 			clusters := <-ch
@@ -597,7 +597,7 @@ func DbWorldClusterMap(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 
 			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
 			if joinStatus == "JOIN" {
@@ -679,7 +679,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
 			clusters := <-ch
@@ -847,7 +847,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
@@ -1008,7 +1008,7 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
 			clusters := <-ch

@@ -59,7 +59,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 
-		if FindInInterfaceArr(gCluster, clusterName) {
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 
 			if joinStatus == "JOIN" {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})

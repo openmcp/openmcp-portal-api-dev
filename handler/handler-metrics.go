@@ -24,7 +24,7 @@ func ClusterList(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-		if FindInInterfaceArr(gCluster, clustername) {
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			clusternames = append(clusternames, clustername)
 		}
 	}
