@@ -196,21 +196,21 @@ var routes = Routes{
 
 	Route{
 		"dashboardregiongroups",
-		"GET",
+		"POST",
 		"/apis/dashboard/region_groups",
 		handler.DbRegionGroups,
 	},
 
 	Route{
 		"dashboardomcp",
-		"GET",
+		"POST",
 		"/apis/dashboard/omcp",
 		handler.DbOmcp,
 	},
 
 	Route{
 		"dashboardworldclustermap",
-		"GET",
+		"POST",
 		"/apis/dashboard/world_cluster_map",
 		handler.DbWorldClusterMap,
 	},
@@ -238,13 +238,13 @@ var routes = Routes{
 
 	Route{
 		"clusters",
-		"GET",
+		"POST",
 		"/apis/clusters",
 		handler.GetJoinedClusters,
 	},
 	Route{
 		"joinableclusters",
-		"GET",
+		"POST",
 		"/apis/joinableclusters",
 		handler.GetJoinableClusters,
 	},
@@ -278,7 +278,7 @@ var routes = Routes{
 
 	Route{
 		"nodes",
-		"GET",
+		"POST",
 		"/apis/nodes",
 		handler.Nodes,
 	},
@@ -532,7 +532,7 @@ var routes = Routes{
 
 	Route{
 		"settings",
-		"GET",
+		"POST",
 		"/apis/metric/clusterlist",
 		handler.ClusterList,
 	},

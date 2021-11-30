@@ -15,7 +15,10 @@ import (
 func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
-	fmt.Println("GetJoinedClusters")
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
@@ -31,38 +34,41 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-		fmt.Println(joinStatus)
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		if FindInInterfaceArr(gCluster, clusterName) {
 
-		if joinStatus == "JOIN" {
-			clusterName := GetStringElement(element, []string{"metadata", "name"})
-			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+			if joinStatus == "JOIN" {
+				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 
-			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
-			go CallAPI(token, clusterurl, ch)
-			clusters := <-ch
-			clusterData := clusters.data
+				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+				go CallAPI(token, clusterurl, ch)
+				clusters := <-ch
+				clusterData := clusters.data
 
-			cluster := ClusterInfo{}
-			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
-			if clusterType == "Ready" {
-				clusterNames = append(clusterNames, clusterName)
-				fmt.Println(clusterNames)
-				cluster.Name = clusterName
-				cluster.Provider = provider
+				cluster := ClusterInfo{}
+				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+				if clusterType == "Ready" {
+					clusterNames = append(clusterNames, clusterName)
+					fmt.Println(clusterNames)
+					cluster.Name = clusterName
+					cluster.Provider = provider
 
-				// // if 조건으로 테스트용 Provider 입력해보자
-				// if clusterName == "cluster1" {
-				// 	provider = "On-Premis" //>>> KVM이라고할꺼임
-				// } else if clusterName == "cluster2" {
-				// 	provider = "GKE"
-				// } else if clusterName == "openmcp" {
-				// 	provider = "AKS"
-				// } else {
-				// 	provider = "EKS"
-				// }
-				resCluster.Clusters = append(resCluster.Clusters, cluster)
+					// // if 조건으로 테스트용 Provider 입력해보자
+					// if clusterName == "cluster1" {
+					// 	provider = "On-Premis" //>>> KVM이라고할꺼임
+					// } else if clusterName == "cluster2" {
+					// 	provider = "GKE"
+					// } else if clusterName == "openmcp" {
+					// 	provider = "AKS"
+					// } else {
+					// 	provider = "EKS"
+					// }
+					resCluster.Clusters = append(resCluster.Clusters, cluster)
+				}
 			}
+
 		}
+
 	}
 
 	for i, cluster := range resCluster.Clusters {
@@ -281,6 +287,10 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	// url := "https://" + openmcpURL + "/joinable" //못쓴다 이제... 전체 cluster검색후 metadata : joinStatus: UNJOIN인것들만 모아서 뿌려야함.
 
@@ -303,48 +313,50 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 	if clusterData["items"] != nil {
 		for _, element := range clusterData["items"].([]interface{}) {
 			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-			if joinStatus == "UNJOIN" {
-				clusterName := GetStringElement(element, []string{"metadata", "name"})
-				// endpoint := element.(map[string]interface{})["endpoint"].(string)
-				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
-				region := "-"
-				zone := "-"
+			clusterName := GetStringElement(element, []string{"metadata", "name"})
+			if FindInInterfaceArr(gCluster, clusterName) {
+				if joinStatus == "UNJOIN" {
+					// endpoint := element.(map[string]interface{})["endpoint"].(string)
+					provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+					region := "-"
+					zone := "-"
 
-				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
-				go CallAPI(token, clusterurl, ch)
-				clusters2 := <-ch
-				clusterData2 := clusters2.data
+					clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+					go CallAPI(token, clusterurl, ch)
+					clusters2 := <-ch
+					clusterData2 := clusters2.data
 
-				endpoint := ""
-				for _, element := range clusterData2["items"].([]interface{}) {
-					targetClusterName := GetStringElement(element, []string{"metadata", "name"})
+					endpoint := ""
+					for _, element := range clusterData2["items"].([]interface{}) {
+						targetClusterName := GetStringElement(element, []string{"metadata", "name"})
 
-					if clusterName == targetClusterName {
-						endpoint = GetStringElement(element, []string{"spec", "apiEndpoint"})
-						endpoint = strings.Replace(endpoint, "https://", "", -1)
-						endpoint = strings.Replace(endpoint, "http://", "", -1)
-						address := strings.Split(endpoint, ":")
-						endpoint = address[0]
+						if clusterName == targetClusterName {
+							endpoint = GetStringElement(element, []string{"spec", "apiEndpoint"})
+							endpoint = strings.Replace(endpoint, "https://", "", -1)
+							endpoint = strings.Replace(endpoint, "http://", "", -1)
+							address := strings.Split(endpoint, ":")
+							endpoint = address[0]
+						}
 					}
-				}
 
-				nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
-				go CallAPI(token, nodeURL, ch)
-				nodeResult := <-ch
-				nodeData := nodeResult.data
-				nodeItems := nodeData["items"].([]interface{})
+					nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+					go CallAPI(token, nodeURL, ch)
+					nodeResult := <-ch
+					nodeData := nodeResult.data
+					nodeItems := nodeData["items"].([]interface{})
 
-				for _, element := range nodeItems {
-					isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+					for _, element := range nodeItems {
+						isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
-					if isMaster != "-" && isMaster == "" {
-						zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-						region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+						if isMaster != "-" && isMaster == "" {
+							zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+							region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+						}
 					}
-				}
 
-				res := joinable{clusterName, endpoint, provider, region, zone}
-				joinableLists = append(joinableLists, res)
+					res := joinable{clusterName, endpoint, provider, region, zone}
+					joinableLists = append(joinableLists, res)
+				}
 			}
 		}
 		json.NewEncoder(w).Encode(joinableLists)

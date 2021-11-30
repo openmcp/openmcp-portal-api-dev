@@ -202,6 +202,11 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
+
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
@@ -261,73 +266,74 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+			// https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
 
-		// https://192.168.0.152:30000/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/cluster1?clustername=openmcp
+			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clustername + "/?clustername=openmcp"
+			go CallAPI(token, clusterurl, ch)
+			clusters2 := <-ch
+			clusterData2 := clusters2.data
 
-		clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clustername + "/?clustername=openmcp"
-		go CallAPI(token, clusterurl, ch)
-		clusters2 := <-ch
-		clusterData2 := clusters2.data
+			endpoint := ""
 
-		endpoint := ""
+			endpoint = GetStringElement(clusterData2, []string{"spec", "apiEndpoint"})
+			endpoint = strings.Replace(endpoint, "https://", "", -1)
+			endpoint = strings.Replace(endpoint, "http://", "", -1)
+			address := strings.Split(endpoint, ":")
+			endpoint = address[0]
 
-		endpoint = GetStringElement(clusterData2, []string{"spec", "apiEndpoint"})
-		endpoint = strings.Replace(endpoint, "https://", "", -1)
-		endpoint = strings.Replace(endpoint, "http://", "", -1)
-		address := strings.Split(endpoint, ":")
-		endpoint = address[0]
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
+				region := ""
+				zone := ""
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				clusterStatus := "Healthy"
 
-			region := ""
-			zone := ""
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-			clusterStatus := "Healthy"
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterStatus = "Unhealthy"
+					clusterUnHealthyCnt++
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterStatus = "Healthy"
+					clusterHealthyCnt++
+				} else {
+					clusterStatus = "Unknown"
+					clusterUnknownCnt++
+				}
 
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterStatus = "Unhealthy"
-				clusterUnHealthyCnt++
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterStatus = "Healthy"
-				clusterHealthyCnt++
+				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+				fmt.Println(region + " : " + zone + " : " + provider)
+
+				clusterlist[region] =
+					Region{
+						region,
+						Attributes{clusterStatus, region, zone},
+						append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
+
+				jcinfoList["OpenMCP"] =
+					DashJoinedClusters{
+						"OpenMCP",
+						Attributes{clusterStatus, region, zone},
+						append(jcinfoList["OpenMCP"].Children, ClusterChildNode{clustername, ClusterAttribute{clusterStatus, zone, region, endpoint}})}
+
+				clusternames = append(clusternames, clustername)
 			} else {
-				clusterStatus = "Unknown"
-				clusterUnknownCnt++
+				jcinfoList["UnJoined"] =
+					DashJoinedClusters{
+						"UnJoined",
+						Attributes{"Unknown", "Unknown", "Unknown"},
+						append(jcinfoList["UnJoined"].Children, ClusterChildNode{clustername, ClusterAttribute{"Unknown", "Unknown", "Unknown", endpoint}})}
 			}
-
-			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
-
-			clusterlist[region] =
-				Region{
-					region,
-					Attributes{clusterStatus, region, zone},
-					append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
-
-			jcinfoList["OpenMCP"] =
-				DashJoinedClusters{
-					"OpenMCP",
-					Attributes{clusterStatus, region, zone},
-					append(jcinfoList["OpenMCP"].Children, ClusterChildNode{clustername, ClusterAttribute{clusterStatus, zone, region, endpoint}})}
-
-			clusternames = append(clusternames, clustername)
-		} else {
-			jcinfoList["UnJoined"] =
-				DashJoinedClusters{
-					"UnJoined",
-					Attributes{"Unknown", "Unknown", "Unknown"},
-					append(jcinfoList["UnJoined"].Children, ClusterChildNode{clustername, ClusterAttribute{"Unknown", "Unknown", "Unknown", endpoint}})}
 		}
 	}
 
@@ -342,6 +348,11 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 	// start := time.Now()
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
 	go CallAPI(token, clusterurl, ch)
@@ -358,45 +369,48 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
-			region := ""
-			zone := ""
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-			clusterStatus := "Healthy"
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
+				region := ""
+				zone := ""
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				clusterStatus := "Healthy"
 
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterStatus = "Unhealthy"
-				clusterUnHealthyCnt++
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterStatus = "Healthy"
-				clusterHealthyCnt++
-			} else {
-				clusterStatus = "Unknown"
-				clusterUnknownCnt++
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterStatus = "Unhealthy"
+					clusterUnHealthyCnt++
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterStatus = "Healthy"
+					clusterHealthyCnt++
+				} else {
+					clusterStatus = "Unknown"
+					clusterUnknownCnt++
+				}
+
+				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+				fmt.Println(region + " : " + zone + " : " + provider)
+
+				clusterlist[region] =
+					Region{
+						region,
+						Attributes{clusterStatus, region, zone},
+						append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
+
+				clusternames = append(clusternames, clustername)
 			}
 
-			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
-
-			clusterlist[region] =
-				Region{
-					region,
-					Attributes{clusterStatus, region, zone},
-					append(clusterlist[region].Children, ChildNode{clustername, Attributes{clusterStatus, region, zone}})}
-
-			clusternames = append(clusternames, clustername)
 		}
 	}
 
@@ -416,8 +430,6 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() // 리소스 누출 방지
 
 	gCluster := data["g_clusters"].([]interface{})
-
-	fmt.Println(FindInInterfaceArr(gCluster, "cluster1"))
 
 	var allUrls []string
 
@@ -570,6 +582,11 @@ func DbWorldClusterMap(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
+
 	var wmcRes []WorldMapClusterInfo
 	var wmcCountMap = make(map[string]WorldMapClusterInfo)
 	url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpclusters/?clustername=openmcp"
@@ -578,12 +595,17 @@ func DbWorldClusterMap(w http.ResponseWriter, r *http.Request) {
 	clusterData := clusters.data
 
 	for _, element := range clusterData["items"].([]interface{}) {
-		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-		if joinStatus == "JOIN" {
-			region := ""
-			region = GetStringElement(element, []string{"spec", "nodeInfo", "region"})
-			wmcCountMap[region] =
-				WorldMapClusterInfo{region, wmcCountMap[region].Value + 1}
+
+		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
+
+			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+			if joinStatus == "JOIN" {
+				region := ""
+				region = GetStringElement(element, []string{"spec", "nodeInfo", "region"})
+				wmcCountMap[region] =
+					WorldMapClusterInfo{region, wmcCountMap[region].Value + 1}
+			}
 		}
 	}
 
@@ -605,6 +627,8 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	pathRegion := data["pathRegion"].(string)
 	pathCluster := data["pathCluster"].(string)
 	pathPod := data["pathPod"].(string)
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
@@ -655,86 +679,90 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
+				region := ""
+				zone := ""
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				clusterStatus := "Healthy"
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
-			region := ""
-			zone := ""
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-			clusterStatus := "Healthy"
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterStatus = "Unhealthy"
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterStatus = "Healthy"
+				} else {
+					clusterStatus = "Unknown"
+				}
 
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterStatus = "Unhealthy"
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterStatus = "Healthy"
-			} else {
-				clusterStatus = "Unknown"
-			}
+				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+				fmt.Println(region + " : " + zone + " : " + provider)
 
-			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
+				cluster := Clusters{}
+				cluster.Id = region + "-" + clustername
+				cluster.Name = clustername
+				cluster.Path = pathCluster
+				cluster.Value = "30"
+				cluster.Status = clusterStatus
 
-			cluster := Clusters{}
-			cluster.Id = region + "-" + clustername
-			cluster.Name = clustername
-			cluster.Path = pathCluster
-			cluster.Value = "30"
-			cluster.Status = clusterStatus
+				// GET PODS
+				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				go CallAPI(token, podURL, ch)
+				podResult := <-ch
+				podData := podResult.data
+				podItems := podData["items"].([]interface{})
 
-			// GET PODS
-			podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-			go CallAPI(token, podURL, ch)
-			podResult := <-ch
-			podData := podResult.data
-			podItems := podData["items"].([]interface{})
+				// get podUsage counts by nodename groups
+				for _, element := range podItems {
+					pod := Pods{}
+					podName := GetStringElement(element, []string{"metadata", "name"})
+					status := GetStringElement(element, []string{"status", "phase"})
+					namespace := GetStringElement(element, []string{"metadata", "namespace"})
 
-			// get podUsage counts by nodename groups
-			for _, element := range podItems {
-				pod := Pods{}
-				podName := GetStringElement(element, []string{"metadata", "name"})
-				status := GetStringElement(element, []string{"status", "phase"})
-				namespace := GetStringElement(element, []string{"metadata", "namespace"})
-				// podIP := "-"
-				// node := "-"
-				// nodeIP := "-"
-				// if status == "Running" {
-				// 	podIP = GetStringElement(element, []string{"status", "podIP"})
-				// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-				// 	node = GetStringElement(element, []string{"spec", "nodeName"})
-				// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-				// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-				// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+					if !IsContains(GetSystemNamespace(), namespace) {
+						// podIP := "-"
+						// node := "-"
+						// nodeIP := "-"
+						// if status == "Running" {
+						// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+						// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+						// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+						// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+						// }
+
+						pod.Id = region + "-" + clustername + "-" + podName
+						pod.Name = podName
+						pod.Value = "5"
+						pod.Path = pathPod
+						pod.Status = status
+						podData := PodSubInfo{clustername, namespace}
+						pod.Data = podData
+						cluster.Pods = append(cluster.Pods, pod)
+					}
+				}
+
+				// type ClusterTopology struct {
+				// 	Name     string     `json:"name"`
+				// 	Path     string     `json:"path"`
+				// 	Value    string     `json:"value"`
+				// 	Clusters []Clusters `json:"children"`
 				// }
 
-				pod.Id = region + "-" + clustername + "-" + podName
-				pod.Name = podName
-				pod.Value = "5"
-				pod.Path = pathPod
-				pod.Status = status
-				podData := PodSubInfo{clustername, namespace}
-				pod.Data = podData
-				cluster.Pods = append(cluster.Pods, pod)
+				clusterTopologylist[region] =
+					ClusterTopology{region, pathRegion, "50", "", append(clusterTopologylist[region].Clusters, cluster)}
 			}
-
-			// type ClusterTopology struct {
-			// 	Name     string     `json:"name"`
-			// 	Path     string     `json:"path"`
-			// 	Value    string     `json:"value"`
-			// 	Clusters []Clusters `json:"children"`
-			// }
-
-			clusterTopologylist[region] =
-				ClusterTopology{region, pathRegion, "50", "", append(clusterTopologylist[region].Clusters, cluster)}
 		}
 	}
 
@@ -761,6 +789,8 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 	pathService := data["pathService"].(string)
 	pathCluster := data["pathCluster"].(string)
 	pathPod := data["pathPod"].(string)
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
@@ -817,93 +847,95 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+		if FindInInterfaceArr(gCluster, clustername) {
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
-			region := ""
-			zone := ""
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-			clusterStatus := "Healthy"
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterStatus = "Unhealthy"
-				clusterUnHealthyCnt++
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterStatus = "Healthy"
-				clusterHealthyCnt++
-			} else {
-				clusterStatus = "Unknown"
-				clusterUnknownCnt++
-			}
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
+				region := ""
+				zone := ""
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				clusterStatus := "Healthy"
 
-			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
-
-			// GET PODS
-			podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-			go CallAPI(token, podURL, ch)
-			podResult := <-ch
-			podData := podResult.data
-			podItems := podData["items"].([]interface{})
-
-			// get podUsage counts by nodename groups
-			for _, element := range podItems {
-				pod := Pods{}
-				app := GetStringElement(element, []string{"metadata", "labels", "app"})
-				namespace := GetStringElement(element, []string{"metadata", "namespace"})
-				if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
-					podName := GetStringElement(element, []string{"metadata", "name"})
-					status := GetStringElement(element, []string{"status", "phase"})
-					// project := GetStringElement(element, []string{"metadata", "namespace"})
-					// podIP := "-"
-					// node := "-"
-					// nodeIP := "-"
-					// if status == "Running" {
-					// 	podIP = GetStringElement(element, []string{"status", "podIP"})
-					// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-					// 	node = GetStringElement(element, []string{"spec", "nodeName"})
-					// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-					// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-					// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
-					// }
-
-					pod.Id = app + "-" + clustername + "-" + podName
-					pod.Name = podName
-					pod.Value = "5"
-					pod.Path = pathPod
-					pod.Status = status
-					podData := PodSubInfo{clustername, namespace}
-					pod.Data = podData
-					fmt.Println(clustername + " : " + app + pod.Data.Namespace)
-
-					serviceClusterlist[app] =
-						Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
-
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterStatus = "Unhealthy"
+					clusterUnHealthyCnt++
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterStatus = "Healthy"
+					clusterHealthyCnt++
+				} else {
+					clusterStatus = "Unknown"
+					clusterUnknownCnt++
 				}
+
+				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+				fmt.Println(region + " : " + zone + " : " + provider)
+
+				// GET PODS
+				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				go CallAPI(token, podURL, ch)
+				podResult := <-ch
+				podData := podResult.data
+				podItems := podData["items"].([]interface{})
+
+				// get podUsage counts by nodename groups
+				for _, element := range podItems {
+					pod := Pods{}
+					app := GetStringElement(element, []string{"metadata", "labels", "app"})
+					namespace := GetStringElement(element, []string{"metadata", "namespace"})
+					if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+						podName := GetStringElement(element, []string{"metadata", "name"})
+						status := GetStringElement(element, []string{"status", "phase"})
+						// project := GetStringElement(element, []string{"metadata", "namespace"})
+						// podIP := "-"
+						// node := "-"
+						// nodeIP := "-"
+						// if status == "Running" {
+						// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+						// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+						// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+						// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+						// }
+
+						pod.Id = app + "-" + clustername + "-" + podName
+						pod.Name = podName
+						pod.Value = "5"
+						pod.Path = pathPod
+						pod.Status = status
+						podData := PodSubInfo{clustername, namespace}
+						pod.Data = podData
+						fmt.Println(clustername + " : " + app + pod.Data.Namespace)
+
+						serviceClusterlist[app] =
+							Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
+
+					}
+				}
+
+				for _, outp := range serviceClusterlist {
+					serviceTopologylist[outp.App] =
+						ServiceTopology{outp.App, pathService, "50", "", append(serviceTopologylist[outp.App].Clusters, outp)}
+					// resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
+				}
+
+				// type ClusterTopology struct {
+				// 	Name     string     `json:"name"`
+				// 	Path     string     `json:"path"`
+				// 	Value    string     `json:"value"`
+				// 	Clusters []Clusters `json:"children"`
+				// }
 			}
-
-			for _, outp := range serviceClusterlist {
-				serviceTopologylist[outp.App] =
-					ServiceTopology{outp.App, pathService, "50", "", append(serviceTopologylist[outp.App].Clusters, outp)}
-				// resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
-			}
-
-			// type ClusterTopology struct {
-			// 	Name     string     `json:"name"`
-			// 	Path     string     `json:"path"`
-			// 	Value    string     `json:"value"`
-			// 	Clusters []Clusters `json:"children"`
-			// }
-
 		}
 	}
 
@@ -930,6 +962,7 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	pathRegion := data["pathRegion"].(string)
 	pathCluster := data["pathCluster"].(string)
 	pathService := data["pathService"].(string)
+	gCluster := data["g_clusters"].([]interface{})
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
@@ -975,79 +1008,80 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
+				region := ""
+				zone := ""
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				clusterStatus := "Healthy"
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
-			region := ""
-			zone := ""
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-			clusterStatus := "Healthy"
-
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterStatus = "Unhealthy"
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterStatus = "Healthy"
-			} else {
-				clusterStatus = "Unknown"
-			}
-
-			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
-
-			cluster := Clusters{}
-			cluster.Id = region + "-" + clustername
-			cluster.Name = clustername
-			cluster.Path = pathCluster
-			cluster.Value = "30"
-			cluster.Data = clusterStatus
-
-			// GET PODS
-			podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-			go CallAPI(token, podURL, ch)
-			podResult := <-ch
-			podData := podResult.data
-			podItems := podData["items"].([]interface{})
-
-			// get podUsage counts by nodename groups
-			for _, element := range podItems {
-				service := Services{}
-
-				app := GetStringElement(element, []string{"metadata", "labels", "app"})
-				namespace := GetStringElement(element, []string{"metadata", "namespace"})
-
-				//
-				if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
-					if !IsContains(appNames, app) {
-						appNames = append(appNames, app)
-
-						service.Id = app
-						service.Name = app
-						service.Value = "5"
-						service.Path = pathService
-						service.Data = ""
-
-						cluster.Services = append(cluster.Services, service)
-					} else {
-						if !IsContains(cluster.Link, app) {
-							cluster.Link = append(cluster.Link, app)
-						}
-					}
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterStatus = "Unhealthy"
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterStatus = "Healthy"
+				} else {
+					clusterStatus = "Unknown"
 				}
 
-			}
+				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
+				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
+				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
+				fmt.Println(region + " : " + zone + " : " + provider)
 
-			regionTopologylist[region] =
-				RegionTopology{region, pathRegion, "50", "", append(regionTopologylist[region].Clusters, cluster)}
+				cluster := Clusters{}
+				cluster.Id = region + "-" + clustername
+				cluster.Name = clustername
+				cluster.Path = pathCluster
+				cluster.Value = "30"
+				cluster.Data = clusterStatus
+
+				// GET PODS
+				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				go CallAPI(token, podURL, ch)
+				podResult := <-ch
+				podData := podResult.data
+				podItems := podData["items"].([]interface{})
+
+				// get podUsage counts by nodename groups
+				for _, element := range podItems {
+					service := Services{}
+
+					app := GetStringElement(element, []string{"metadata", "labels", "app"})
+					namespace := GetStringElement(element, []string{"metadata", "namespace"})
+
+					//
+					if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+						if !IsContains(appNames, app) {
+							appNames = append(appNames, app)
+
+							service.Id = app
+							service.Name = app
+							service.Value = "5"
+							service.Path = pathService
+							service.Data = ""
+
+							cluster.Services = append(cluster.Services, service)
+						} else {
+							if !IsContains(cluster.Link, app) {
+								cluster.Link = append(cluster.Link, app)
+							}
+						}
+					}
+
+				}
+
+				regionTopologylist[region] =
+					RegionTopology{region, pathRegion, "50", "", append(regionTopologylist[region].Clusters, cluster)}
+			}
 		}
 	}
 
