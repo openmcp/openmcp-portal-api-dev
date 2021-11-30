@@ -412,6 +412,13 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
+
+	fmt.Println(FindInInterfaceArr(gCluster, "cluster1"))
+
 	var allUrls []string
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
@@ -428,28 +435,30 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clustername) {
+			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			go CallAPI(token, url, ch)
+			clusters := <-ch
+			clusterData := clusters.data
 
-		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-		go CallAPI(token, url, ch)
-		clusters := <-ch
-		clusterData := clusters.data
+			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+			if joinStatus == "JOIN" {
+				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
 
-		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
-			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-			statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-			statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-			statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-
-			if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-				clusterUnHealthyCnt++
-			} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-				clusterHealthyCnt++
-			} else {
-				clusterUnknownCnt++
+				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+					clusterUnHealthyCnt++
+				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+					clusterHealthyCnt++
+				} else {
+					clusterUnknownCnt++
+				}
+				clusternames = append(clusternames, clustername)
 			}
-			clusternames = append(clusternames, clustername)
 		}
+
 	}
 
 	for _, cluster := range clusternames {

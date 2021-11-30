@@ -189,7 +189,7 @@ var routes = Routes{
 
 	Route{
 		"dashboardstatus",
-		"GET",
+		"POST",
 		"/apis/dashboard/status",
 		handler.DbStatus,
 	},
