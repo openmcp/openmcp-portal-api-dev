@@ -154,8 +154,8 @@ var routes = Routes{
 
 	Route{
 		"snapshotlist",
-		"GET",
-		"/apis/snapshot",
+		"POST",
+		"/apis/snapshot/list",
 		handler.SnapshotList,
 	},
 
@@ -320,7 +320,7 @@ var routes = Routes{
 
 	Route{
 		"deployments",
-		"GET",
+		"POST",
 		"/apis/deployments",
 		handler.GetDeployments,
 	},
@@ -386,7 +386,7 @@ var routes = Routes{
 
 	Route{
 		"services",
-		"GET",
+		"POST",
 		"/apis/services",
 		handler.Services,
 	},
@@ -407,7 +407,7 @@ var routes = Routes{
 
 	Route{
 		"ingress",
-		"GET",
+		"POST",
 		"/apis/ingress",
 		handler.Ingress,
 	},
@@ -428,7 +428,7 @@ var routes = Routes{
 
 	Route{
 		"pods",
-		"GET",
+		"POST",
 		"/apis/pods",
 		handler.GetPods,
 	},
@@ -448,14 +448,14 @@ var routes = Routes{
 
 	Route{
 		"vpa",
-		"GET",
+		"POST",
 		"/apis/vpa",
 		handler.GetVPAs,
 	},
 
 	Route{
 		"hpa",
-		"GET",
+		"POST",
 		"/apis/hpa",
 		handler.GetHPAs,
 	},

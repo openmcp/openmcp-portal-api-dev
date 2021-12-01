@@ -19,6 +19,10 @@ import (
 func Services(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	// vars := mux.Vars(r)
 	// clusterName := vars["clusterName"]
@@ -32,17 +36,20 @@ func Services(w http.ResponseWriter, r *http.Request) {
 
 	resServices := ServicesRes{}
 	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusterNames = append(clusterNames, "openmcp")
+	}
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
-
 	}
 
 	for _, clusterName := range clusterNames {

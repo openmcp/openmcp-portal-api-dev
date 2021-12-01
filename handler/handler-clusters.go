@@ -22,7 +22,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
-	fmt.Println("clusterurl : " + clusterurl)
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -49,7 +48,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 				if clusterType == "Ready" {
 					clusterNames = append(clusterNames, clusterName)
-					fmt.Println(clusterNames)
 					cluster.Name = clusterName
 					cluster.Provider = provider
 
@@ -145,9 +143,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			memoryCapSum += memoryCapInt
 
 			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
-
 			fmt.Println(clMetricURL)
-			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name)
+
 			go CallAPI(token, clMetricURL, ch)
 			clMetricResult := <-ch
 			clMetricData := clMetricResult.data

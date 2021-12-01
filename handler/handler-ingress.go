@@ -11,6 +11,10 @@ import (
 func Ingress(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
@@ -19,14 +23,18 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 
 	resIngress := IngerssRes{}
 	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusterNames = append(clusterNames, "openmcp")
+	}
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
 	}
 

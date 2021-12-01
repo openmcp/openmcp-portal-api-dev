@@ -25,11 +25,13 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 
 	resProject := ProjectRes{}
 	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusterNames = append(clusterNames, "openmcp")
+	}
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		if FindInInterfaceArr(gCluster, clusterName) {
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
 			if clusterType == "Ready" {
