@@ -12,6 +12,10 @@ import (
 func GetPods(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	go CallAPI(token, clusterURL, ch)
@@ -20,14 +24,18 @@ func GetPods(w http.ResponseWriter, r *http.Request) {
 
 	resPod := PodRes{}
 	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusterNames = append(clusterNames, "openmcp")
+	}
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		//  element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
 	}
 
@@ -144,6 +152,10 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	var allUrls []string
 
@@ -152,9 +164,16 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	clusters := <-ch
 	clusterData := clusters.data
 	var clusternames []string
+
+	if gCluster[0] == "allClusters" {
+		clusternames = append(clusternames, "openmcp")
+	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusternames = append(clusternames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusternames = append(clusternames, clusterName)
+		}
 	}
 
 	for _, cluster := range clusternames {
@@ -200,6 +219,10 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	var allUrls []string
 
@@ -208,12 +231,17 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 	clusters := <-ch
 	clusterData := clusters.data
 	var clusternames []string
-	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusternames = append(clusternames, clusterName)
-	}
 	// add openmcp master cluster
-	clusternames = append(clusternames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusternames = append(clusternames, "openmcp")
+	}
+	for _, element := range clusterData["items"].([]interface{}) {
+
+		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusternames = append(clusternames, clusterName)
+		}
+	}
 
 	for _, cluster := range clusternames {
 		hpaURL := "https://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster

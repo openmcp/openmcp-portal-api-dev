@@ -78,6 +78,10 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 func SnapshotList(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	type SnapTemp struct {
 		Name             string            `json:"name"`
@@ -155,16 +159,20 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 	clusterData := clusters.data
 
 	clusterNames := []string{}
-	clusterNames = append(clusterNames, "openmcp")
+	if gCluster[0] == "allClusters" {
+		clusterNames = append(clusterNames, "openmcp")
+	}
 
 	resSnapshot := SnapshotRes{}
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
 	}
 

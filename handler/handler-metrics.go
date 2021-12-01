@@ -10,6 +10,11 @@ func ClusterList(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
+
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
@@ -17,9 +22,11 @@ func ClusterList(w http.ResponseWriter, r *http.Request) {
 
 	var clusternames []string
 	for _, element := range clusterData["items"].([]interface{}) {
-
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusternames = append(clusternames, clustername)
+
+		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
+			clusternames = append(clusternames, clustername)
+		}
 	}
 	// resCluster.JoinedClusters = resJoinedClusters
 	json.NewEncoder(w).Encode(clusternames)

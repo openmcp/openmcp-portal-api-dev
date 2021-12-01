@@ -154,8 +154,8 @@ var routes = Routes{
 
 	Route{
 		"snapshotlist",
-		"GET",
-		"/apis/snapshot",
+		"POST",
+		"/apis/snapshot/list",
 		handler.SnapshotList,
 	},
 
@@ -189,28 +189,28 @@ var routes = Routes{
 
 	Route{
 		"dashboardstatus",
-		"GET",
+		"POST",
 		"/apis/dashboard/status",
 		handler.DbStatus,
 	},
 
 	Route{
 		"dashboardregiongroups",
-		"GET",
+		"POST",
 		"/apis/dashboard/region_groups",
 		handler.DbRegionGroups,
 	},
 
 	Route{
 		"dashboardomcp",
-		"GET",
+		"POST",
 		"/apis/dashboard/omcp",
 		handler.DbOmcp,
 	},
 
 	Route{
 		"dashboardworldclustermap",
-		"GET",
+		"POST",
 		"/apis/dashboard/world_cluster_map",
 		handler.DbWorldClusterMap,
 	},
@@ -238,13 +238,13 @@ var routes = Routes{
 
 	Route{
 		"clusters",
-		"GET",
+		"POST",
 		"/apis/clusters",
 		handler.GetJoinedClusters,
 	},
 	Route{
 		"joinableclusters",
-		"GET",
+		"POST",
 		"/apis/joinableclusters",
 		handler.GetJoinableClusters,
 	},
@@ -278,7 +278,7 @@ var routes = Routes{
 
 	Route{
 		"nodes",
-		"GET",
+		"POST",
 		"/apis/nodes",
 		handler.Nodes,
 	},
@@ -299,7 +299,7 @@ var routes = Routes{
 
 	Route{
 		"projects",
-		"GET",
+		"POST",
 		"/apis/projects",
 		handler.Projects,
 	},
@@ -320,7 +320,7 @@ var routes = Routes{
 
 	Route{
 		"deployments",
-		"GET",
+		"POST",
 		"/apis/deployments",
 		handler.GetDeployments,
 	},
@@ -386,7 +386,7 @@ var routes = Routes{
 
 	Route{
 		"services",
-		"GET",
+		"POST",
 		"/apis/services",
 		handler.Services,
 	},
@@ -407,7 +407,7 @@ var routes = Routes{
 
 	Route{
 		"ingress",
-		"GET",
+		"POST",
 		"/apis/ingress",
 		handler.Ingress,
 	},
@@ -428,7 +428,7 @@ var routes = Routes{
 
 	Route{
 		"pods",
-		"GET",
+		"POST",
 		"/apis/pods",
 		handler.GetPods,
 	},
@@ -448,14 +448,14 @@ var routes = Routes{
 
 	Route{
 		"vpa",
-		"GET",
+		"POST",
 		"/apis/vpa",
 		handler.GetVPAs,
 	},
 
 	Route{
 		"hpa",
-		"GET",
+		"POST",
 		"/apis/hpa",
 		handler.GetHPAs,
 	},
@@ -532,7 +532,7 @@ var routes = Routes{
 
 	Route{
 		"settings",
-		"GET",
+		"POST",
 		"/apis/metric/clusterlist",
 		handler.ClusterList,
 	},

@@ -15,6 +15,15 @@ func FindInStrArr(slice []string, val string) bool {
 	return false
 }
 
+func FindInInterfaceArr(slice []interface{}, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
 func Round(x, unit float64) float64 {
 	return math.Round(x/unit) * unit
 }

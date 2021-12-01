@@ -26,6 +26,10 @@ type NodeCluster struct {
 func Nodes(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	// clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
@@ -53,25 +57,29 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-		if joinStatus == "JOIN" {
-			clusterName := GetStringElement(element, []string{"metadata", "name"})
-			provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			// provider := GetStringElement(element, []string{"metadata", "provider"})
-			clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
-			go CallAPI(token, clusterurl, ch)
-			clusters := <-ch
-			clusterData := clusters.data
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
 
-			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 
-			if clusterType == "Ready" {
-				nodeCluster.Name = clusterName
-				nodeCluster.Provider = provider
-				nodeCluster.JoinStatus = joinStatus
+			if joinStatus == "JOIN" {
+				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+				// provider := GetStringElement(element, []string{"metadata", "provider"})
+				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+				go CallAPI(token, clusterurl, ch)
+				clusters := <-ch
+				clusterData := clusters.data
 
-				nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
-				clusterNames = append(clusterNames, clusterName)
+				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+
+				if clusterType == "Ready" {
+					nodeCluster.Name = clusterName
+					nodeCluster.Provider = provider
+					nodeCluster.JoinStatus = joinStatus
+
+					nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
+					clusterNames = append(clusterNames, clusterName)
+				}
 			}
 		}
 	}
