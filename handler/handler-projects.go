@@ -11,6 +11,10 @@ import (
 func Projects(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
 
 	clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	// clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
@@ -25,11 +29,14 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-		clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
-		if clusterType == "Ready" {
-			clusterNames = append(clusterNames, clusterName)
+		if FindInInterfaceArr(gCluster, clusterName) {
+			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
+			if clusterType == "Ready" {
+				clusterNames = append(clusterNames, clusterName)
+			}
 		}
+
 	}
 
 	for _, clusterName := range clusterNames {

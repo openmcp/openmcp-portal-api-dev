@@ -299,7 +299,7 @@ var routes = Routes{
 
 	Route{
 		"projects",
-		"GET",
+		"POST",
 		"/apis/projects",
 		handler.Projects,
 	},
