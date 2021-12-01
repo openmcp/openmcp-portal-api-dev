@@ -15,11 +15,9 @@ import (
 func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
-	fmt.Println("GetJoinedClusters")
 
 	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
-	fmt.Println("clusterurl : " + clusterurl)
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -31,7 +29,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-		fmt.Println(joinStatus)
 
 		if joinStatus == "JOIN" {
 			clusterName := GetStringElement(element, []string{"metadata", "name"})
@@ -46,7 +43,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 			if clusterType == "Ready" {
 				clusterNames = append(clusterNames, clusterName)
-				fmt.Println(clusterNames)
 				cluster.Name = clusterName
 				cluster.Provider = provider
 
@@ -76,6 +72,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		nodeResult := <-ch
 		nodeData := nodeResult.data
 		nodeItems := nodeData["items"].([]interface{})
+		fmt.Println(nodeURL + "==========END")
 
 		cpuCapSum := 0
 		memoryCapSum := 0
@@ -83,7 +80,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		cpuUseSum := 0
 		memoryUseSum := 0
 		fsUseSum := 0
-		networkSum := 0
+		// networkSum := 0
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
@@ -150,8 +147,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			memoryUse := "0Ki"
 			fsUse := "0Ki"
 			fsCap := "0Ki"
-			ntRx := "0"
-			ntTx := "0"
+			// ntRx := "0"
+			// ntTx := "0"
 			//  cluster CPU Usage, Memroy Usage 확인
 			if clMetricData["nodemetrics"] != nil {
 				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
@@ -201,25 +198,25 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 					fsUseInt, _ := strconv.Atoi(fsUse)
 					fsUseSum += fsUseInt
 
-					ntRxCheck := GetInterfaceElement(element, []string{"network", "NetworkRxBytes"})
-					// element.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"]
-					if ntRxCheck == nil {
-						ntRx = "0"
-					} else {
-						ntRx = ntRxCheck.(string)
-					}
-					ntTxCheck := GetInterfaceElement(element, []string{"network", "NetworkTxBytes"})
-					// element.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"]
-					if ntTxCheck == nil {
-						ntTx = "0"
-					} else {
-						ntTx = ntTxCheck.(string)
-					}
-					ntTxUseInt, _ := strconv.Atoi(ntTx)
-					ntRxUseInt, _ := strconv.Atoi(ntRx)
-					rTxSum := ntRxUseInt + ntTxUseInt
+					// ntRxCheck := GetInterfaceElement(element, []string{"network", "NetworkRxBytes"})
+					// // element.(map[string]interface{})["network"].(map[string]interface{})["NetworkRxBytes"]
+					// if ntRxCheck == nil {
+					// 	ntRx = "0"
+					// } else {
+					// 	ntRx = ntRxCheck.(string)
+					// }
+					// ntTxCheck := GetInterfaceElement(element, []string{"network", "NetworkTxBytes"})
+					// // element.(map[string]interface{})["network"].(map[string]interface{})["NetworkTxBytes"]
+					// if ntTxCheck == nil {
+					// 	ntTx = "0"
+					// } else {
+					// 	ntTx = ntTxCheck.(string)
+					// }
+					// ntTxUseInt, _ := strconv.Atoi(ntTx)
+					// ntRxUseInt, _ := strconv.Atoi(ntRx)
+					// rTxSum := ntRxUseInt + ntTxUseInt
 
-					networkSum += rTxSum
+					// networkSum += rTxSum
 
 				}
 			}
@@ -237,8 +234,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		fsUseSumS := fmt.Sprintf("%.1f", fsUseSumF)
 		fsCapSumF := float64(fsCapSum) / 1000 / 1000
 		fsCapSumS := fmt.Sprintf("%.1f", fsCapSumF)
-		networkCapSumF := float64(networkSum) / 1000 / 1000 / 1000 / 1000
-		networkCapSumS := fmt.Sprintf("%.1f", networkCapSumF)
+		// networkCapSumF := float64(networkSum) / 1000 / 1000 / 1000 / 1000
+		// networkCapSumS := fmt.Sprintf("%.1f", networkCapSumF)
 		// networkSumS := strconv.Itoa(networkSum)
 
 		// fmt.Println(fsUseSumS, fsCapSumS)
@@ -268,10 +265,11 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Cpu = cpuUseSumS + "/" + strconv.Itoa(cpuCapSum) + " Core"
 		resCluster.Clusters[i].Ram = memoryUseSumS + "/" + memoryCapSumS + " Gi"
 		resCluster.Clusters[i].Disk = PercentUseString(fsUseSumS, fsCapSumS) + "%"
-		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
+		// resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
+		resCluster.Clusters[i].Network = "0 byte/s"
 		resCluster.Clusters[i].ResourceUsage = resUsage
 	}
-	fmt.Println(resCluster.Clusters)
+	// fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
