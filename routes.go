@@ -15,6 +15,13 @@ type Route struct {
 type Routes []Route
 
 var routes = Routes{
+
+	Route{
+		"getpubliccloudclusters",
+		"POST",
+		"/apis/clusters/public-cloud",
+		handler.GetPublicCloudClusters,
+	},
 	Route{
 		"changeekstype",
 		"POST",

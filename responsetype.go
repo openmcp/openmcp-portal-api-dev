@@ -76,6 +76,7 @@ type EKSNodegroup struct {
 	MaxSize          int64         `json:"max_size"`
 	MinSize          int64         `json:"min_size"`
 	AutoscalingGroup string        `json:"auto_scaling_group"`
+	Region           string        `json:"region"`
 	Instances        []EKSInstance `json:"intances"`
 }
 

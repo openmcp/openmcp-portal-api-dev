@@ -422,6 +422,7 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func DbStatus(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("DbStatus")
 	// start := time.Now()
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()

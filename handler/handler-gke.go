@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -185,6 +186,7 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 	projectID := data["projectId"].(string)
 	clientEmail := data["clientEmail"].(string)
 	privateKey := data["privateKey"].(string)
+	privateKey = strings.Replace(privateKey, "\\n", "\n", -1)
 
 	client, ctx := GetGKEAuth(projectID, clientEmail, privateKey)
 	svc, err := container.NewService(ctx, option.WithHTTPClient(client))
@@ -194,8 +196,10 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 
 	lists, err := svc.Projects.Zones.Clusters.List(projectID, "-").Do()
 	if err != nil {
+		fmt.Println("err : ")
 		fmt.Println(err)
 	}
+	fmt.Println(lists)
 
 	// json.NewEncoder(w).Encode(lists)
 	var clusters []GKEClusterInfo

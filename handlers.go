@@ -91,6 +91,7 @@ func GetEKSClusterInfo(w http.ResponseWriter, r *http.Request) {
 				*maxSize,
 				*minSize,
 				asgName,
+				region,
 				asEKSInstances[asgName],
 			})
 		}
