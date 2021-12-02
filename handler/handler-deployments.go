@@ -53,49 +53,51 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 		deploymentResult := <-ch
 		// fmt.Println(deploymentResult)
 		deploymentData := deploymentResult.data
-		deploymentItems := deploymentData["items"].([]interface{})
+		if deploymentData["kind"].(string) == "DeploymentList" {
+			deploymentItems := deploymentData["items"].([]interface{})
 
-		// get deployement Information
-		for _, element := range deploymentItems {
-			name := GetStringElement(element, []string{"metadata", "name"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			namespace := GetStringElement(element, []string{"metadata", "namespace"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+			// get deployement Information
+			for _, element := range deploymentItems {
+				name := GetStringElement(element, []string{"metadata", "name"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+				namespace := GetStringElement(element, []string{"metadata", "namespace"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
 
-			status := "-"
-			availableReplicas := GetInterfaceElement(element, []string{"status", "availableReplicas"})
-			// element.(map[string]interface{})["status"].(map[string]interface{})["availableReplicas"]
-			readyReplicas := GetInterfaceElement(element, []string{"status", "readyReplicas"})
-			// element.(map[string]interface{})["status"].(map[string]interface{})["readyReplicas"]
-			replicas := GetFloat64Element(element, []string{"status", "replicas"})
-			// element.(map[string]interface{})["status"].(map[string]interface{})["replicas"].(float64)
+				status := "-"
+				availableReplicas := GetInterfaceElement(element, []string{"status", "availableReplicas"})
+				// element.(map[string]interface{})["status"].(map[string]interface{})["availableReplicas"]
+				readyReplicas := GetInterfaceElement(element, []string{"status", "readyReplicas"})
+				// element.(map[string]interface{})["status"].(map[string]interface{})["readyReplicas"]
+				replicas := GetFloat64Element(element, []string{"status", "replicas"})
+				// element.(map[string]interface{})["status"].(map[string]interface{})["replicas"].(float64)
 
-			replS := fmt.Sprintf("%.0f", replicas)
+				replS := fmt.Sprintf("%.0f", replicas)
 
-			if readyReplicas != nil {
-				readyReplS := fmt.Sprintf("%.0f", readyReplicas)
-				status = readyReplS + "/" + replS
-			} else if availableReplicas == nil {
-				status = "0/" + replS
-			} else {
-				status = "0/0"
+				if readyReplicas != nil {
+					readyReplS := fmt.Sprintf("%.0f", readyReplicas)
+					status = readyReplS + "/" + replS
+				} else if availableReplicas == nil {
+					status = "0/" + replS
+				} else {
+					status = "0/0"
+				}
+
+				image := GetStringElement(element, []string{"spec", "template", "spec", "containers", "image"})
+				// element.(map[string]interface{})["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{})[0].(map[string]interface{})["image"].(string)
+				created_time := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+
+				deployment.Name = name
+				deployment.Status = status
+				deployment.Cluster = clusterName
+				deployment.Project = namespace
+				deployment.Image = image
+				deployment.CreatedTime = created_time
+				deployment.Uid = ""
+				deployment.Labels = make(map[string]interface{})
+
+				resDeployment.Deployments = append(resDeployment.Deployments, deployment)
 			}
-
-			image := GetStringElement(element, []string{"spec", "template", "spec", "containers", "image"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{})[0].(map[string]interface{})["image"].(string)
-			created_time := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-
-			deployment.Name = name
-			deployment.Status = status
-			deployment.Cluster = clusterName
-			deployment.Project = namespace
-			deployment.Image = image
-			deployment.CreatedTime = created_time
-			deployment.Uid = ""
-			deployment.Labels = make(map[string]interface{})
-
-			resDeployment.Deployments = append(resDeployment.Deployments, deployment)
 		}
 	}
 	json.NewEncoder(w).Encode(resDeployment.Deployments)

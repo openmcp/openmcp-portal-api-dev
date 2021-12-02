@@ -46,38 +46,40 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, projectURL, ch)
 		projectResult := <-ch
 		projectData := projectResult.data
-		projectItems := projectData["items"].([]interface{})
+		if projectData["kind"].(string) == "NamespaceList" {
+			projectItems := projectData["items"].([]interface{})
 
-		// get podUsage counts by nodename groups
-		for _, element := range projectItems {
-			project := ProjectInfo{}
-			projectName := GetStringElement(element, []string{"metadata", "name"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-			status := GetStringElement(element, []string{"status", "phase"})
-			// element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
+			// get podUsage counts by nodename groups
+			for _, element := range projectItems {
+				project := ProjectInfo{}
+				projectName := GetStringElement(element, []string{"metadata", "name"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+				createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+				status := GetStringElement(element, []string{"status", "phase"})
+				// element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
 
-			labels := make(map[string]interface{})
-			labelCheck := GetInterfaceElement(element, []string{"metadata", "labels"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["labels"]
-			if labelCheck == nil {
-				//undefined lable
-				labels = map[string]interface{}{}
-			} else {
-				for key, val := range labelCheck.(map[string]interface{}) {
-					// fmt.Println(key, val)
-					labels[key] = val
+				labels := make(map[string]interface{})
+				labelCheck := GetInterfaceElement(element, []string{"metadata", "labels"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["labels"]
+				if labelCheck == nil {
+					//undefined lable
+					labels = map[string]interface{}{}
+				} else {
+					for key, val := range labelCheck.(map[string]interface{}) {
+						// fmt.Println(key, val)
+						labels[key] = val
+					}
 				}
+				project.Name = projectName
+				project.Status = status
+				project.Cluster = clusterName
+				project.CreatedTime = createdTime
+				project.Labels = labels
+
+				resProject.Projects = append(resProject.Projects, project)
+
 			}
-			project.Name = projectName
-			project.Status = status
-			project.Cluster = clusterName
-			project.CreatedTime = createdTime
-			project.Labels = labels
-
-			resProject.Projects = append(resProject.Projects, project)
-
 		}
 	}
 

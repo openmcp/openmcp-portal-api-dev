@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 )
 
@@ -44,4 +45,9 @@ func PercentUseString(child, mother string) (result string) {
 	res := (c / m) * 100
 	result = fmt.Sprintf("%.1f", res)
 	return
+}
+
+func sliceRemoveItem(slicep interface{}, i int) {
+	v := reflect.ValueOf(slicep).Elem()
+	v.Set(reflect.AppendSlice(v.Slice(0, i), v.Slice(i+1, v.Len())))
 }

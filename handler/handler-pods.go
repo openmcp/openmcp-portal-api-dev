@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,46 +45,48 @@ func GetPods(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, podURL, ch)
 		podResult := <-ch
 		podData := podResult.data
-		podItems := podData["items"].([]interface{})
+		if podData["kind"].(string) == "PodList" {
+			podItems := podData["items"].([]interface{})
 
-		// get podUsage counts by nodename groups
-		for _, element := range podItems {
-			pod := PodInfo{}
-			podName := GetStringElement(element, []string{"metadata", "name"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			project := GetStringElement(element, []string{"metadata", "namespace"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-			status := GetStringElement(element, []string{"status", "phase"})
-			// element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
-			podIP := "-"
-			node := "-"
-			nodeIP := "-"
-			if status == "Running" {
-				podIP = GetStringElement(element, []string{"status", "podIP"})
-				// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-				node = GetStringElement(element, []string{"spec", "nodeName"})
-				// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-				nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-				// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+			// get podUsage counts by nodename groups
+			for _, element := range podItems {
+				pod := PodInfo{}
+				podName := GetStringElement(element, []string{"metadata", "name"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+				project := GetStringElement(element, []string{"metadata", "namespace"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+				status := GetStringElement(element, []string{"status", "phase"})
+				// element.(map[string]interface{})["status"].(map[string]interface{})["phase"].(string)
+				podIP := "-"
+				node := "-"
+				nodeIP := "-"
+				if status == "Running" {
+					podIP = GetStringElement(element, []string{"status", "podIP"})
+					// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+					node = GetStringElement(element, []string{"spec", "nodeName"})
+					// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+					nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+					// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+				}
+
+				cpu := "cpu"
+				ram := "ram"
+				createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+
+				pod.Name = podName
+				pod.Status = status
+				pod.Cluster = clusterName
+				pod.Project = project
+				pod.PodIP = podIP
+				pod.Node = node
+				pod.NodeIP = nodeIP
+				pod.Cpu = cpu
+				pod.Ram = ram
+				pod.CreatedTime = createdTime
+
+				resPod.Pods = append(resPod.Pods, pod)
 			}
-
-			cpu := "cpu"
-			ram := "ram"
-			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-
-			pod.Name = podName
-			pod.Status = status
-			pod.Cluster = clusterName
-			pod.Project = project
-			pod.PodIP = podIP
-			pod.Node = node
-			pod.NodeIP = nodeIP
-			pod.Cpu = cpu
-			pod.Ram = ram
-			pod.CreatedTime = createdTime
-
-			resPod.Pods = append(resPod.Pods, pod)
 		}
 	}
 
@@ -165,9 +168,9 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	clusterData := clusters.data
 	var clusternames []string
 
-	if gCluster[0] == "allClusters" {
-		clusternames = append(clusternames, "openmcp")
-	}
+	// if gCluster[0] == "allClusters" {
+	// 	clusternames = append(clusternames, "openmcp")
+	// }
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
@@ -182,6 +185,7 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, arg := range allUrls[0:] {
+		fmt.Println(arg)
 		go CallAPI(token, arg, ch)
 	}
 
@@ -193,21 +197,23 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	var VPAResList []VPARes
 
 	for key, result := range results {
-		clusterName := string(key[strings.LastIndex(key, "=")+1:])
-		items := result.(map[string]interface{})["items"].([]interface{})
-		for _, item := range items {
-			hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		if result.(map[string]interface{})["kind"].(string) == "VerticalPodAutoscalerList" {
+			clusterName := string(key[strings.LastIndex(key, "=")+1:])
+			items := result.(map[string]interface{})["items"].([]interface{})
+			for _, item := range items {
+				hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-			namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+				namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
 
-			reference := item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["name"].(string)
+				reference := item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["targetRef"].(map[string]interface{})["name"].(string)
 
-			updateMode := item.(map[string]interface{})["spec"].(map[string]interface{})["updatePolicy"].(map[string]interface{})["updateMode"].(string)
+				updateMode := item.(map[string]interface{})["spec"].(map[string]interface{})["updatePolicy"].(map[string]interface{})["updateMode"].(string)
 
-			res := VPARes{hpaName, namespace, clusterName, reference, updateMode}
+				res := VPARes{hpaName, namespace, clusterName, reference, updateMode}
 
-			VPAResList = append(VPAResList, res)
+				VPAResList = append(VPAResList, res)
 
+			}
 		}
 	}
 	json.NewEncoder(w).Encode(VPAResList)
@@ -262,27 +268,30 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 
 	for key, result := range results {
 		clusterName := string(key[strings.LastIndex(key, "=")+1:])
-		items := result.(map[string]interface{})["items"].([]interface{})
-		for _, item := range items {
-			hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-			namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+		if result.(map[string]interface{})["kind"].(string) == "HorizontalPodAutoscalerList" {
+			items := result.(map[string]interface{})["items"].([]interface{})
+			for _, item := range items {
+				hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 
-			reference := item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["name"].(string)
+				namespace := item.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
 
-			minRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["minReplicas"].(float64)
-			minReplStr := strconv.FormatFloat(minRepl, 'f', -1, 64)
+				reference := item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["kind"].(string) + "/" + item.(map[string]interface{})["spec"].(map[string]interface{})["scaleTargetRef"].(map[string]interface{})["name"].(string)
 
-			maxRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["maxReplicas"].(float64)
-			maxReplStr := strconv.FormatFloat(maxRepl, 'f', -1, 64)
+				minRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["minReplicas"].(float64)
+				minReplStr := strconv.FormatFloat(minRepl, 'f', -1, 64)
 
-			currentRepl := item.(map[string]interface{})["status"].(map[string]interface{})["currentReplicas"].(float64)
-			currentRepllStr := strconv.FormatFloat(currentRepl, 'f', -1, 64)
+				maxRepl := item.(map[string]interface{})["spec"].(map[string]interface{})["maxReplicas"].(float64)
+				maxReplStr := strconv.FormatFloat(maxRepl, 'f', -1, 64)
 
-			res := HPARes{hpaName, namespace, clusterName, reference, minReplStr, maxReplStr, currentRepllStr}
+				currentRepl := item.(map[string]interface{})["status"].(map[string]interface{})["currentReplicas"].(float64)
+				currentRepllStr := strconv.FormatFloat(currentRepl, 'f', -1, 64)
 
-			HPAResList = append(HPAResList, res)
+				res := HPARes{hpaName, namespace, clusterName, reference, minReplStr, maxReplStr, currentRepllStr}
 
+				HPAResList = append(HPAResList, res)
+
+			}
 		}
 	}
 	json.NewEncoder(w).Encode(HPAResList)

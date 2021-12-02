@@ -44,22 +44,24 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, ingressURL, ch)
 		ingressResult := <-ch
 		ingressData := ingressResult.data
-		ingressItems := ingressData["items"].([]interface{})
+		if ingressData["kind"].(string) == "IngressList" {
+			ingressItems := ingressData["items"].([]interface{})
 
-		if len(ingressItems) > 0 {
-			for _, element := range ingressItems {
-				name := GetStringElement(element, []string{"metadata", "name"})
-				namespace := GetStringElement(element, []string{"metadata", "namespace"})
-				ipAddress := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
-				createTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+			if len(ingressItems) > 0 {
+				for _, element := range ingressItems {
+					name := GetStringElement(element, []string{"metadata", "name"})
+					namespace := GetStringElement(element, []string{"metadata", "namespace"})
+					ipAddress := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
+					createTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
 
-				ingress.Name = name
-				ingress.Project = namespace
-				ingress.Address = ipAddress
-				ingress.CreatedTime = createTime
-				ingress.Cluster = clusterName
+					ingress.Name = name
+					ingress.Project = namespace
+					ingress.Address = ipAddress
+					ingress.CreatedTime = createTime
+					ingress.Cluster = clusterName
 
-				resIngress.Ingress = append(resIngress.Ingress, ingress)
+					resIngress.Ingress = append(resIngress.Ingress, ingress)
+				}
 			}
 		}
 	}
