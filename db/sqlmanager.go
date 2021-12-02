@@ -3,8 +3,8 @@ package db
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/jinzhu/configor"
+	"os"
+	
 	_ "github.com/lib/pq"
 )
 
@@ -18,12 +18,11 @@ var Config = struct {
 }{}
 
 func initDBConfig() {
-	configor.Load(&Config, "dbconfig.yml")
-	// // fmt.Printf("config: %#v", Config)
-	// fmt.Printf("host: %s", Config.DB.Host)
-	// fmt.Printf("passwd: %s", Config.DB.Password)
-	// fmt.Printf("user: %s", Config.DB.User)
-	// fmt.Printf("port: %s", Config.DB.Port)
+	// configor.Load(&Config, "dbconfig.yml")
+	Config.DB.Host = os.Getenv("DB_HOST")
+	Config.DB.User = os.Getenv("DB_USER")
+	Config.DB.Password = os.Getenv("DB_PASSWORD")
+	Config.DB.Port = os.Getenv("DB_PORT")
 
 }
 
