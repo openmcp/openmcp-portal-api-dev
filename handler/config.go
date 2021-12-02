@@ -17,7 +17,11 @@ var portalConfig = struct {
 }{}
 
 func InitPortalConfig() string {
-	configor.Load(&portalConfig, "portalConfig.yml")
+	// configor.Load(&portalConfig, "portalConfig.yml")
+	portalConfig.Portal.OpenmcpURL = os.Getenv("OPENMCPURL")
+	portalConfig.Portal.Port = os.Getenv("OPENMCPURLPORT")
+	portalConfig.Portal.Kubeconfig = os.Getenv("KUBECONFIG")
+
 	return portalConfig.Portal.OpenmcpURL + ":" + portalConfig.Portal.Port
 }
 
@@ -37,7 +41,11 @@ var InfluxConfig = struct {
 
 //Influx Configration
 func InitInfluxConfig() {
-	configor.Load(&InfluxConfig, "dbconfig.yml")
+	InfluxConfig.Influx.Ip = os.Getenv("INFLUX_IP")
+	InfluxConfig.Influx.Port = os.Getenv("INFLUX_PORT")
+	InfluxConfig.Influx.Username = os.Getenv("INFLUX_USERNAME")
+	InfluxConfig.Influx.Password = os.Getenv("INFLUX_PASSWORD")
+	// configor.Load(&InfluxConfig, "dbconfig.yml")
 }
 
 type Influx struct {
