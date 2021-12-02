@@ -2,9 +2,9 @@ package handler
 
 import (
 	"fmt"
-
+	"os"
 	"github.com/influxdata/influxdb/client/v2"
-	"github.com/jinzhu/configor"
+	// "github.com/jinzhu/configor"
 )
 
 var portalConfig = struct {
