@@ -33,6 +33,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 
 	// clusterURL := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
 	clusterURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+
 	go CallAPI(token, clusterURL, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -93,6 +94,9 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
+		if nodeData["kind"].(string) != "NodeList" {
+			continue
+		}
 		nodeItems := nodeData["items"].([]interface{})
 
 		// get nodename, cpu capacity Information

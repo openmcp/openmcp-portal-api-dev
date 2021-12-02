@@ -36,21 +36,25 @@ func NodeList(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
 	clusterName := r.URL.Query().Get("cluster")
+	var nodeNames []string
 
 	nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 	go CallAPI(token, nodeURL, ch)
 	nodeResult := <-ch
 	nodeData := nodeResult.data
-	nodeItems := nodeData["items"].([]interface{})
+	if nodeData["kind"].(string) == "NodeList" {
+		nodeItems := nodeData["items"].([]interface{})
 
-	var nodeNames []string
-	// get nodename, cpu capacity Information
-	for _, element := range nodeItems {
-		nodeName := GetStringElement(element, []string{"metadata", "name"})
-		nodeNames = append(nodeNames, nodeName)
+		// get nodename, cpu capacity Information
+		for _, element := range nodeItems {
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			nodeNames = append(nodeNames, nodeName)
+		}
+
+		json.NewEncoder(w).Encode(nodeNames)
+	} else {
+		json.NewEncoder(w).Encode(nodeNames)
 	}
-
-	json.NewEncoder(w).Encode(nodeNames)
 }
 
 func NamespaceList(w http.ResponseWriter, r *http.Request) {

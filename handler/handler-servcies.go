@@ -58,74 +58,76 @@ func Services(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, serviceURL, ch)
 		serviceResult := <-ch
 		serviceData := serviceResult.data
-		serviceItems := serviceData["items"].([]interface{})
+		if serviceData["kind"].(string) == "ServiceList" {
+			serviceItems := serviceData["items"].([]interface{})
 
-		// get service Information
-		for _, element := range serviceItems {
-			name := GetStringElement(element, []string{"metadata", "name"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
-			namespace := GetStringElement(element, []string{"metadata", "namespace"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
-			serviceType := GetStringElement(element, []string{"spec", "type"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
-			clusterIP := GetStringElement(element, []string{"spec", "clusterIP"})
-			externalIP := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
+			// get service Information
+			for _, element := range serviceItems {
+				name := GetStringElement(element, []string{"metadata", "name"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+				namespace := GetStringElement(element, []string{"metadata", "namespace"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["namespace"].(string)
+				serviceType := GetStringElement(element, []string{"spec", "type"})
+				// element.(map[string]interface{})["spec"].(map[string]interface{})["type"].(string)
+				clusterIP := GetStringElement(element, []string{"spec", "clusterIP"})
+				externalIP := GetStringElement(element, []string{"status", "loadBalancer", "ingress", "ip"})
 
-			selector := ""
-			selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["selector"]
-			if selectorCheck != nil {
-				i := 0
-				for key, val := range selectorCheck.(map[string]interface{}) {
-					i++
-					value := fmt.Sprintf("%v", val)
-					if i == len(selectorCheck.(map[string]interface{})) {
-						selector = selector + key + " : " + value
-					} else {
-						selector = selector + key + " : " + value + "|"
-					}
-				}
-			} else {
-				selector = "-"
-			}
-
-			port := ""
-			portCheck := GetArrayElement(element, []string{"spec", "ports"})
-			// element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
-			if portCheck != nil {
-				for i, item := range portCheck {
-					j := 0
-					for key, val := range item.(map[string]interface{}) {
-						j++
+				selector := ""
+				selectorCheck := GetInterfaceElement(element, []string{"spec", "selector"})
+				// element.(map[string]interface{})["spec"].(map[string]interface{})["selector"]
+				if selectorCheck != nil {
+					i := 0
+					for key, val := range selectorCheck.(map[string]interface{}) {
+						i++
 						value := fmt.Sprintf("%v", val)
-						if j == len(item.(map[string]interface{})) {
-							port = port + "{ " + key + " : " + value + " }"
+						if i == len(selectorCheck.(map[string]interface{})) {
+							selector = selector + key + " : " + value
 						} else {
-							port = port + "{ " + key + " : " + value + " },  "
+							selector = selector + key + " : " + value + "|"
 						}
 					}
-					if i < len(portCheck)-1 {
-						port = port + "|"
-					}
+				} else {
+					selector = "-"
 				}
 
-			} else {
-				port = "-"
+				port := ""
+				portCheck := GetArrayElement(element, []string{"spec", "ports"})
+				// element.(map[string]interface{})["spec"].(map[string]interface{})["ports"].([]interface{})
+				if portCheck != nil {
+					for i, item := range portCheck {
+						j := 0
+						for key, val := range item.(map[string]interface{}) {
+							j++
+							value := fmt.Sprintf("%v", val)
+							if j == len(item.(map[string]interface{})) {
+								port = port + "{ " + key + " : " + value + " }"
+							} else {
+								port = port + "{ " + key + " : " + value + " },  "
+							}
+						}
+						if i < len(portCheck)-1 {
+							port = port + "|"
+						}
+					}
+
+				} else {
+					port = "-"
+				}
+				createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+				// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
+
+				service.Cluster = clusterName
+				service.Name = name
+				service.Project = namespace
+				service.Type = serviceType
+				service.Selector = selector
+				service.Port = port
+				service.CreatedTime = createdTime
+				service.ClusterIP = clusterIP
+				service.ExternalIP = externalIP
+
+				resServices.Services = append(resServices.Services, service)
 			}
-			createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-			// element.(map[string]interface{})["metadata"].(map[string]interface{})["creationTimestamp"].(string)
-
-			service.Cluster = clusterName
-			service.Name = name
-			service.Project = namespace
-			service.Type = serviceType
-			service.Selector = selector
-			service.Port = port
-			service.CreatedTime = createdTime
-			service.ClusterIP = clusterIP
-			service.ExternalIP = externalIP
-
-			resServices.Services = append(resServices.Services, service)
 		}
 	}
 	json.NewEncoder(w).Encode(resServices.Services)

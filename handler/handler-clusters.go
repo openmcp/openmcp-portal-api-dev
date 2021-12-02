@@ -29,7 +29,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	resCluster := ClustersRes{}
 
 	//get clusters Information
-	clusterNames := []string{}
+	// clusterNames := []string{}
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
@@ -47,7 +47,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 				cluster := ClusterInfo{}
 				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 				if clusterType == "Ready" {
-					clusterNames = append(clusterNames, clusterName)
+					// clusterNames = append(clusterNames, clusterName)
 					cluster.Name = clusterName
 					cluster.Provider = provider
 
@@ -79,6 +79,10 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
+		if nodeData["kind"].(string) != "NodeList" {
+			sliceRemoveItem(&resCluster.Clusters, i)
+			continue
+		}
 		nodeItems := nodeData["items"].([]interface{})
 
 		cpuCapSum := 0
@@ -313,6 +317,15 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 			if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 				if joinStatus == "UNJOIN" {
 					// endpoint := element.(map[string]interface{})["endpoint"].(string)
+					nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+					go CallAPI(token, nodeURL, ch)
+					nodeResult := <-ch
+					nodeData := nodeResult.data
+					if nodeData["kind"].(string) != "NodeList" {
+						continue
+					}
+					nodeItems := nodeData["items"].([]interface{})
+
 					provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 					region := "-"
 					zone := "-"
@@ -334,12 +347,6 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 							endpoint = address[0]
 						}
 					}
-
-					nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
-					go CallAPI(token, nodeURL, ch)
-					nodeResult := <-ch
-					nodeData := nodeResult.data
-					nodeItems := nodeData["items"].([]interface{})
 
 					for _, element := range nodeItems {
 						isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
@@ -875,6 +882,10 @@ func GetPublicCloudClusters(w http.ResponseWriter, r *http.Request) {
 		go CallAPI(token, nodeURL, ch)
 		nodeResult := <-ch
 		nodeData := nodeResult.data
+		if nodeData["kind"].(string) != "NodeList" {
+			sliceRemoveItem(&resCluster.Clusters, i)
+			continue
+		}
 		nodeItems := nodeData["items"].([]interface{})
 
 		cpuCapSum := 0
