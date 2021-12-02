@@ -274,7 +274,6 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Network = networkCapSumS + " byte/s"
 		resCluster.Clusters[i].ResourceUsage = resUsage
 	}
-	fmt.Println(resCluster.Clusters)
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
@@ -808,4 +807,188 @@ func OpenMCPUnjoin(w http.ResponseWriter, r *http.Request) {
 	jsonErrs = append(jsonErrs, msg)
 
 	json.NewEncoder(w).Encode(jsonErrs)
+}
+
+func GetPublicCloudClusters(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	gCluster := data["g_clusters"].([]interface{})
+	selectedProvider := data["provider"].(string)
+
+	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+	go CallAPI(token, clusterurl, ch)
+	clusters := <-ch
+	clusterData := clusters.data
+
+	type PublicCloudClusterInfo struct {
+		Name     string `json:"name"`
+		Provider string `json:"provider"`
+		Status   string `json:"status"`
+		CPU      string `json:"cpu"`
+		Memory   string `json:"memory"`
+	}
+
+	type PublicCloudClusters struct {
+		Clusters []PublicCloudClusterInfo `json:"clusters"`
+	}
+
+	resCluster := PublicCloudClusters{}
+
+	//get clusters Information
+	clusterNames := []string{}
+
+	for _, element := range clusterData["items"].([]interface{}) {
+		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
+		clusterName := GetStringElement(element, []string{"metadata", "name"})
+		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+
+			if joinStatus == "JOIN" {
+				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
+				if selectedProvider == provider {
+					clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+					go CallAPI(token, clusterurl, ch)
+					clusters := <-ch
+					clusterData := clusters.data
+
+					cluster := PublicCloudClusterInfo{}
+					clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+					if clusterType == "Ready" {
+						clusterNames = append(clusterNames, clusterName)
+						cluster.Name = clusterName
+						cluster.Provider = provider
+						resCluster.Clusters = append(resCluster.Clusters, cluster)
+					}
+				}
+			}
+		}
+	}
+
+	for i, cluster := range resCluster.Clusters {
+		cluster.Status = "Healthy"
+		// get node names, cpu(capacity)
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
+		go CallAPI(token, nodeURL, ch)
+		nodeResult := <-ch
+		nodeData := nodeResult.data
+		nodeItems := nodeData["items"].([]interface{})
+
+		cpuCapSum := 0
+		memoryCapSum := 0
+		cpuUseSum := 0
+		memoryUseSum := 0
+
+		// get nodename, cpu capacity Information
+		for _, element := range nodeItems {
+			// isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+
+			// if isMaster != "-" && isMaster == "" {
+			// 	zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+			// 	region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+			// 	resCluster.Clusters[i].Zones = zone
+			// 	resCluster.Clusters[i].Region = region
+			// }
+
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			status := ""
+			statusInfo := element.(map[string]interface{})["status"]
+			//GetStringElement(element, []string{"status"})
+
+			var healthCheck = make(map[string]string)
+			for _, elem := range statusInfo.(map[string]interface{})["conditions"].([]interface{}) {
+				conType := GetStringElement(elem, []string{"type"})
+				// elem.(map[string]interface{})["type"].(string)
+				tf := GetStringElement(elem, []string{"status"})
+				// elem.(map[string]interface{})["status"].(string)
+				healthCheck[conType] = tf
+			}
+
+			if healthCheck["Ready"] == "True" && (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "False") && healthCheck["MemoryPressure"] == "False" && healthCheck["DiskPressure"] == "False" && healthCheck["PIDPressure"] == "False" {
+				// healthyNodeCnt++
+				status = "Healthy"
+			} else {
+				if healthCheck["Ready"] == "Unknown" || (healthCheck["NetworkUnavailable"] == "" || healthCheck["NetworkUnavailable"] == "Unknown") || healthCheck["MemoryPressure"] == "Unknown" || healthCheck["DiskPressure"] == "Unknown" || healthCheck["PIDPressure"] == "Unknown" {
+					status = "Unknown"
+				} else {
+					status = "Unhealthy"
+				}
+			}
+			if status == "Healthy" {
+				resCluster.Clusters[i].Status = "Healthy"
+			} else {
+				resCluster.Clusters[i].Status = "Unhealthy"
+			}
+
+			cpuCapacity := GetStringElement(element, []string{"status", "capacity", "cpu"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
+			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
+			memoryCapacity := GetStringElement(element, []string{"status", "capacity", "memory"})
+			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
+			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
+			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
+
+			cpuCapSum += cpuCapInt
+			memoryCapSum += memoryCapInt
+
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
+
+			go CallAPI(token, clMetricURL, ch)
+			clMetricResult := <-ch
+			clMetricData := clMetricResult.data
+
+			cpuUse := "0n"
+			memoryUse := "0Ki"
+			//  cluster CPU Usage, Memroy Usage 확인
+			if clMetricData["nodemetrics"] != nil {
+				for _, element := range clMetricData["nodemetrics"].([]interface{}) {
+
+					cpuUseCheck := GetInterfaceElement(element, []string{"cpu", "CPUUsageNanoCores"})
+					if cpuUseCheck == nil {
+						cpuUse = "0n"
+					} else {
+						cpuUse = cpuUseCheck.(string)
+					}
+					cpuUse = strings.Split(cpuUse, "n")[0]
+					cpuUseInt, _ := strconv.Atoi(cpuUse)
+
+					memoryUseCheck := GetInterfaceElement(element, []string{"memory", "MemoryUsageBytes"})
+					if memoryUseCheck == nil {
+						memoryUse = "0Ki"
+					} else {
+						memoryUse = memoryUseCheck.(string)
+					}
+					memoryUse = strings.Split(memoryUse, "Ki")[0]
+					memoryUseInt, _ := strconv.Atoi(memoryUse)
+
+					cpuUseSum += cpuUseInt
+					memoryUseSum += memoryUseInt
+				}
+			}
+		}
+
+		//calculate cpu, memory unit
+		cpuUseSumF := float64(cpuUseSum) / 1000 / 1000 / 1000
+		cpuUseSumS := fmt.Sprintf("%.1f", cpuUseSumF)
+		memoryUseSumF := float64(memoryUseSum) / 1000 / 1000
+		memoryUseSumS := fmt.Sprintf("%.1f", memoryUseSumF)
+		memoryCapSumF := float64(memoryCapSum) / 1000 / 1000
+		memoryCapSumS := fmt.Sprintf("%.1f", memoryCapSumF)
+
+		var cpuStatus []NameFloatVal
+		var memStatus []NameFloatVal
+
+		cpuStatus = append(cpuStatus, NameFloatVal{"Used", cpuUseSumF})
+		cpuStatus = append(cpuStatus, NameFloatVal{"Total", float64(cpuCapSum)})
+
+		memStatus = append(memStatus, NameFloatVal{"Used", memoryUseSumF})
+		memStatus = append(memStatus, NameFloatVal{"Total", memoryCapSumF})
+
+		resCluster.Clusters[i].CPU = cpuUseSumS + "/" + strconv.Itoa(cpuCapSum) + " Core"
+		resCluster.Clusters[i].Memory = memoryUseSumS + "/" + memoryCapSumS + " Gi"
+	}
+	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
