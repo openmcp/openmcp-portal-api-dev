@@ -117,6 +117,7 @@ func GKEChangeNodeCount(w http.ResponseWriter, r *http.Request) {
 	projectID := data["projectId"].(string)
 	clientEmail := data["clientEmail"].(string)
 	privateKey := data["privateKey"].(string)
+	privateKey = strings.Replace(privateKey, "\\n", "\n", -1)
 
 	clusterName := data["cluster"].(string)
 	nodePoolName := data["nodePool"].(string)
@@ -198,10 +199,8 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 
 	lists, err := svc.Projects.Zones.Clusters.List(projectID, "-").Do()
 	if err != nil {
-		fmt.Println("err : ")
 		fmt.Println(err)
 	}
-	fmt.Println(lists)
 
 	// json.NewEncoder(w).Encode(lists)
 	var clusters []GKEClusterInfo
@@ -218,7 +217,8 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 			}
 			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(ig.Size, 10)}
 			// fmt.Println(n.Name, n.Config.MachineType, n.InitialNodeCount)
-			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(n.InitialNodeCount, 10)}
+			// Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(n.InitialNodeCount, 10)}
+			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(v.CurrentNodeCount, 10)}
 			Pools = append(Pools, Pool)
 		}
 		cluster := GKEClusterInfo{v.Name, v.Location, v.Zone, Pools, strconv.FormatInt(v.CurrentNodeCount, 10)}
