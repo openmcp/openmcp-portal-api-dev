@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/influxdata/influxdb/client/v2"
-	"github.com/jinzhu/configor"
+	// "github.com/jinzhu/configor"
 )
 
 var portalConfig = struct {
@@ -18,10 +18,10 @@ var portalConfig = struct {
 }{}
 
 func InitPortalConfig() string {
-	configor.Load(&portalConfig, "portalConfig.yml")
-	// portalConfig.Portal.OpenmcpURL = os.Getenv("OPENMCPURL")
-	// portalConfig.Portal.Port = os.Getenv("OPENMCPURLPORT")
-	// portalConfig.Portal.Kubeconfig = os.Getenv("KUBECONFIG")
+	// configor.Load(&portalConfig, "portalConfig.yml")
+	portalConfig.Portal.OpenmcpURL = os.Getenv("OPENMCPURL")
+	portalConfig.Portal.Port = os.Getenv("OPENMCPURLPORT")
+	portalConfig.Portal.Kubeconfig = os.Getenv("KUBECONFIG")
 
 	return portalConfig.Portal.OpenmcpURL + ":" + portalConfig.Portal.Port
 }
