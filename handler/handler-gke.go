@@ -218,7 +218,7 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(ig.Size, 10)}
 			// fmt.Println(n.Name, n.Config.MachineType, n.InitialNodeCount)
 			// Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(n.InitialNodeCount, 10)}
-			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(v.CurrentNodeCount, 10)}
+			// Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(v.CurrentNodeCount, 10)}
 			Pools = append(Pools, Pool)
 		}
 		cluster := GKEClusterInfo{v.Name, v.Location, v.Zone, Pools, strconv.FormatInt(v.CurrentNodeCount, 10)}
