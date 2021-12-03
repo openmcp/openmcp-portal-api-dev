@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
 	container "google.golang.org/api/container/v1"
 	"google.golang.org/api/option"
 )
@@ -190,6 +191,7 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 
 	client, ctx := GetGKEAuth(projectID, clientEmail, privateKey)
 	svc, err := container.NewService(ctx, option.WithHTTPClient(client))
+	cSvc, _ := compute.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -209,6 +211,12 @@ func GetGKEClusters(w http.ResponseWriter, r *http.Request) {
 		// fmt.Println(v.Zone, v.Location)
 		var Pools []GKENodePool
 		for _, n := range v.NodePools {
+			igName := strings.Split(n.InstanceGroupUrls[0], "/")
+			ig, err := cSvc.InstanceGroups.Get(projectID, v.Zone, igName[len(igName)-1]).Do()
+			if err != nil {
+				fmt.Println(err)
+			}
+			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(ig.Size, 10)}
 			// fmt.Println(n.Name, n.Config.MachineType, n.InitialNodeCount)
 			Pool := GKENodePool{n.Name, n.Config.MachineType, strconv.FormatInt(n.InitialNodeCount, 10)}
 			Pools = append(Pools, Pool)
