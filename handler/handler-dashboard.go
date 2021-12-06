@@ -677,14 +677,44 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 
 	var clusterTopologylist = make(map[string]ClusterTopology)
 
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+
+	clusterInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		clusterInfoList[comm.name] = comm.result
+	}
+
+	podsInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		podsInfoList[comm.name] = comm.result
+	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
-			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-			go CallAPI(token, url, ch)
-			clusters := <-ch
-			clusterData := clusters.data
+			// url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			// go CallAPI(token, url, ch)
+			// clusters := <-ch
+			// clusterData := clusters.data
+			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
@@ -717,10 +747,12 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				cluster.Status = clusterStatus
 
 				// GET PODS
-				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-				go CallAPI(token, podURL, ch)
-				podResult := <-ch
-				podData := podResult.data
+				// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				// go CallAPI(token, podURL, ch)
+				// podResult := <-ch
+				// podData := podResult.data
+				// podItems := podData["items"].([]interface{})
+				podData := podsInfoList[clustername]
 				podItems := podData["items"].([]interface{})
 
 				// get podUsage counts by nodename groups
@@ -840,9 +872,39 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 	var serviceTopologylist = make(map[string]ServiceTopology)
 
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+
+	clusterInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		clusterInfoList[comm.name] = comm.result
+	}
+
+	podsInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		podsInfoList[comm.name] = comm.result
+	}
+
 	clusterHealthyCnt := 0
 	clusterUnHealthyCnt := 0
 	clusterUnknownCnt := 0
+
 	for _, element := range clusterData["items"].([]interface{}) {
 		var serviceClusterlist = make(map[string]Clusters)
 
@@ -850,10 +912,11 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 
-			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-			go CallAPI(token, url, ch)
-			clusters := <-ch
-			clusterData := clusters.data
+			// url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			// go CallAPI(token, url, ch)
+			// clusters := <-ch
+			// clusterData := clusters.data
+			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
@@ -882,10 +945,12 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 				fmt.Println(region + " : " + zone + " : " + provider)
 
 				// GET PODS
-				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-				go CallAPI(token, podURL, ch)
-				podResult := <-ch
-				podData := podResult.data
+				// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				// go CallAPI(token, podURL, ch)
+				// podResult := <-ch
+				// podData := podResult.data
+				// podItems := podData["items"].([]interface{})
+				podData := podsInfoList[clustername]
 				podItems := podData["items"].([]interface{})
 
 				// get podUsage counts by nodename groups
@@ -916,7 +981,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 						pod.Status = status
 						podData := PodSubInfo{clustername, namespace}
 						pod.Data = podData
-						fmt.Println(clustername + " : " + app + pod.Data.Namespace)
+						// fmt.Println(clustername + " : " + app + pod.Data.Namespace)
 
 						serviceClusterlist[app] =
 							Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
@@ -1006,14 +1071,44 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	var regionTopologylist = make(map[string]RegionTopology)
 	appNames := []string{}
 
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+
+	clusterInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		clusterInfoList[comm.name] = comm.result
+	}
+
+	podsInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		podsInfoList[comm.name] = comm.result
+	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
-			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-			go CallAPI(token, url, ch)
-			clusters := <-ch
-			clusterData := clusters.data
+			// url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+			// go CallAPI(token, url, ch)
+			// clusters := <-ch
+			// clusterData := clusters.data
+			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
@@ -1046,10 +1141,13 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 				cluster.Data = clusterStatus
 
 				// GET PODS
-				podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
-				go CallAPI(token, podURL, ch)
-				podResult := <-ch
-				podData := podResult.data
+				// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+				// go CallAPI(token, podURL, ch)
+				// podResult := <-ch
+				// podData := podResult.data
+				// podItems := podData["items"].([]interface{})
+
+				podData := podsInfoList[clustername]
 				podItems := podData["items"].([]interface{})
 
 				// get podUsage counts by nodename groups

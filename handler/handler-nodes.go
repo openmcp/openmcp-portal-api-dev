@@ -54,6 +54,29 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 	// nodeCluster.Region = "AS"
 	// nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
 	/////////////////////////////////////////////////////////////////////////////
+	// fmt.Println("clusterDatalen", len(clusterData["items"].([]interface{})))
+	// startTime := time.Now()
+
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+	clusterInfoList := make(map[string]map[string]interface{})
+
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + cName + "?clustername=openmcp"
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	// elapsedTime := time.Since(startTime)
+	// fmt.Printf("nodeClustersInfo concurrent1: %s\n", elapsedTime)
+
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		clusterInfoList[comm.name] = comm.result
+	}
+	// elapsedTime = time.Since(startTime)
+	// fmt.Printf("nodeClustersInfo concurrent2: %s\n", elapsedTime)
 
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
@@ -66,10 +89,12 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 				// provider := GetStringElement(element, []string{"metadata", "provider"})
-				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
-				go CallAPI(token, clusterurl, ch)
-				clusters := <-ch
-				clusterData := clusters.data
+				// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+				// go CallAPI(token, clusterurl, ch)
+				// clusters := <-ch
+				// clusterData := clusters.data
+
+				clusterData := clusterInfoList[clusterName]
 
 				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 
@@ -85,19 +110,66 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan = make(chan ChanRes, len(nodeClusters.Clusters))
+	ciChan2 := make(chan ChanRes, len(nodeClusters.Clusters))
+	defer close(ciChan2)
+	nodesInfoList := make(map[string]map[string]interface{})
+	podsInfoList := make(map[string]map[string]interface{})
+	for _, nodeCluster := range nodeClusters.Clusters {
+		cName := nodeCluster.Name
+		nURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cName
+		pURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, nURL, cName, token)
+		}(cName)
+		go func(cName string) {
+			CallAPIGO(ciChan2, pURL, cName, token)
+		}(cName)
+	}
+	// elapsedTime = time.Since(startTime)
+	// fmt.Printf("nodesInfo concurrent1: %s\n", elapsedTime)
+
+	for range nodeClusters.Clusters {
+		comm := <-ciChan
+		comm2 := <-ciChan2
+		// fmt.Println("1111", comm.name)
+		nodesInfoList[comm.name] = comm.result
+		podsInfoList[comm2.name] = comm2.result
+	}
+	// elapsedTime = time.Since(startTime)
+	// fmt.Printf("nodesInfo concurrent2: %s\n", elapsedTime)
+	// fmt.Println(3)
+
 	// for _, clusterName := range clusterNames {
 	for _, nodeCluster := range nodeClusters.Clusters {
 		node := NodeInfo{}
 		// get node names, cpu(capacity)
 		// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
-		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + nodeCluster.Name
-		go CallAPI(token, nodeURL, ch)
-		nodeResult := <-ch
-		nodeData := nodeResult.data
+		// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + nodeCluster.Name
+		// go CallAPI(token, nodeURL, ch)
+		// nodeResult := <-ch
+		// nodeData := nodeResult.data
+		nodeData := nodesInfoList[nodeCluster.Name]
+
 		if nodeData["kind"].(string) != "NodeList" {
 			continue
 		}
 		nodeItems := nodeData["items"].([]interface{})
+
+		ciChan = make(chan ChanRes, len(nodeItems))
+		clMetricInfoList := make(map[string]map[string]interface{})
+		for _, element := range nodeItems {
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			url := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + nodeCluster.Name
+			go func(nodeName string) {
+				CallAPIGO(ciChan, url, nodeName, token)
+			}(nodeName)
+		}
+
+		for range nodeItems {
+			comm := <-ciChan
+			clMetricInfoList[comm.name] = comm.result
+		}
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
@@ -158,14 +230,15 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 			containerRuntimeVersion := GetStringElement(element, []string{"status", "nodeInfo", "containerRuntimeVersion"})
 			// element.(map[string]interface{})["status"].(map[string]interface{})["nodeInfo"].(map[string]interface{})["containerRuntimeVersion"].(string)
 
-			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + nodeCluster.Name
-			// clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
-			// clMetricURL := "http://192.168.0.152:31635/metrics/nodes/clusterd-worker1.dev.gmd.life?clustername=cluster2"
+			// clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + nodeCluster.Name
+			// // clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName
+			// // clMetricURL := "http://192.168.0.152:31635/metrics/nodes/clusterd-worker1.dev.gmd.life?clustername=cluster2"
 
-			// fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
-			go CallAPI(token, clMetricURL, ch)
-			clMetricResult := <-ch
-			clMetricData := clMetricResult.data
+			// // fmt.Println("check usl ::: http://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + clusterName)
+			// go CallAPI(token, clMetricURL, ch)
+			// clMetricResult := <-ch
+			// clMetricData := clMetricResult.data
+			clMetricData := clMetricInfoList[nodeName]
 
 			cpuUse := "0"
 			memoryUse := "0"
@@ -224,12 +297,17 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//pods counts by nodename
-		podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + nodeCluster.Name
-		// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
-		go CallAPI(token, podURL, ch)
-		podResult := <-ch
-		podData := podResult.data
+		// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + nodeCluster.Name
+		// // podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+		// go CallAPI(token, podURL, ch)
+		// podResult := <-ch
+		// podData := podResult.data
+		// podItems := podData["items"].([]interface{})
+
+		// podItems := podsInfoList[nodeCluster.Name]
+		podData := podsInfoList[nodeCluster.Name]
 		podItems := podData["items"].([]interface{})
+
 		// fmt.Println("podItmes len:", len(podItems))
 
 		// get podUsage counts by nodename groups

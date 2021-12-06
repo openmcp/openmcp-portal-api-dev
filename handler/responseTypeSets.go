@@ -636,3 +636,8 @@ type WorldMapClusterInfo struct {
 	Country string `json:"country"`
 	Value   int    `json:"value"`
 }
+
+type ChanRes struct {
+	name   string
+	result map[string]interface{}
+}

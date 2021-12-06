@@ -985,3 +985,11 @@ func GetSystemNamespace() []string {
 	systemNamespaces := []string{"kube-system", "openmcp", "kube-federation-system", "metallb-system", "monitoring", "istio-system", "ingress-nginx"}
 	return systemNamespaces
 }
+
+func CallAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
+	ch := make(chan Resultmap)
+	go CallAPI(token, url, ch)
+	result := <-ch
+	data := result.data
+	ciChan <- ChanRes{resourceName, data}
+}

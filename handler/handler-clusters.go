@@ -10,6 +10,7 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +32,22 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 	//get clusters Information
 	// clusterNames := []string{}
 
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+
+	clusterInfoList := make(map[string]map[string]interface{})
+	for _, element := range clusterData["items"].([]interface{}) {
+		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+		url := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + cName + "?clustername=openmcp"
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+	for range clusterData["items"].([]interface{}) {
+		comm := <-ciChan
+		clusterInfoList[comm.name] = comm.result
+	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
@@ -39,10 +56,11 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			if joinStatus == "JOIN" {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 
-				clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
-				go CallAPI(token, clusterurl, ch)
-				clusters := <-ch
-				clusterData := clusters.data
+				// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
+				// go CallAPI(token, clusterurl, ch)
+				// clusters := <-ch
+				// clusterData := clusters.data
+				clusterData := clusterInfoList[clusterName]
 
 				cluster := ClusterInfo{}
 				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
@@ -68,23 +86,37 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+	ciChan = make(chan ChanRes, len(resCluster.Clusters))
+	nodesInfoList := make(map[string]map[string]interface{})
+	for _, nodeCluster := range resCluster.Clusters {
+		cName := nodeCluster.Name
+		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, nodeURL, cName, token)
+		}(cName)
+	}
+
+	for range resCluster.Clusters {
+		comm := <-ciChan
+		// fmt.Println("1111", comm.name)
+		nodesInfoList[comm.name] = comm.result
+	}
 
 	for i, cluster := range resCluster.Clusters {
-
 		cluster.Status = "Healthy"
 
-		// get node names, cpu(capacity)
-		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
-		fmt.Println(nodeURL)
-		go CallAPI(token, nodeURL, ch)
-		nodeResult := <-ch
-		nodeData := nodeResult.data
+		// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cluster.Name
+		// go CallAPI(token, nodeURL, ch)
+		// nodeResult := <-ch
+		// nodeData := nodeResult.data
+		nodeData := nodesInfoList[cluster.Name]
+
 		if nodeData["kind"].(string) != "NodeList" {
-			sliceRemoveItem(&resCluster.Clusters, i)
+			// fmt.Println(cluster.Name)
+			// sliceRemoveItem(&resCluster.Clusters, i)
 			continue
 		}
 		nodeItems := nodeData["items"].([]interface{})
-		fmt.Println(nodeURL + "==========END")
 
 		cpuCapSum := 0
 		memoryCapSum := 0
@@ -93,6 +125,22 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		memoryUseSum := 0
 		fsUseSum := 0
 		// networkSum := 0
+
+		ciChan = make(chan ChanRes, len(nodeItems))
+		clMetricInfoList := make(map[string]map[string]interface{})
+		for _, element := range nodeItems {
+			cName := cluster.Name
+			nodeName := GetStringElement(element, []string{"metadata", "name"})
+			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cName
+			go func(nodeName string) {
+				CallAPIGO(ciChan, clMetricURL, nodeName, token)
+			}(nodeName)
+		}
+
+		for range nodeItems {
+			comm := <-ciChan
+			clMetricInfoList[comm.name] = comm.result
+		}
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
@@ -147,12 +195,13 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			cpuCapSum += cpuCapInt
 			memoryCapSum += memoryCapInt
 
-			clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
-			fmt.Println(clMetricURL)
+			// clMetricURL := "https://" + openmcpURL + "/metrics/nodes/" + nodeName + "?clustername=" + cluster.Name
+			// // fmt.Println(clMetricURL)
 
-			go CallAPI(token, clMetricURL, ch)
-			clMetricResult := <-ch
-			clMetricData := clMetricResult.data
+			// go CallAPI(token, clMetricURL, ch)
+			// clMetricResult := <-ch
+			// clMetricData := clMetricResult.data
+			clMetricData := clMetricInfoList[nodeName]
 
 			cpuUse := "0n"
 			memoryUse := "0Ki"
@@ -280,6 +329,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		resCluster.Clusters[i].Network = "0 byte/s"
 		resCluster.Clusters[i].ResourceUsage = resUsage
 	}
+
 	json.NewEncoder(w).Encode(resCluster.Clusters)
 }
 
@@ -608,7 +658,8 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		// fmt.Println(nodeResCPUSumStr, nodeResMemSumStr, nodeResFSSum, nodeResFSCapaSum)
 
 		//cat ~/.kube/config > config (copy and paste)
-		config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
+		// config, _ := buildConfigFromFlags(clusterNm, kubeConfigFile)
+		config, _ := rest.InClusterConfig()
 		clientset, _ := kubernetes.NewForConfig(config)
 		compStatus, _ := clientset.CoreV1().ComponentStatuses().List(v1.ListOptions{})
 
