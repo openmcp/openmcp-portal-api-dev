@@ -40,11 +40,30 @@ func GetPods(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan := make(chan ChanRes, len(clusterNames))
+	defer close(ciChan)
+	podInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		podInfoList[comm.name] = comm.result
+	}
+
 	for _, clusterName := range clusterNames {
-		podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
-		go CallAPI(token, podURL, ch)
-		podResult := <-ch
-		podData := podResult.data
+		// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clusterName
+		// go CallAPI(token, podURL, ch)
+		// podResult := <-ch
+		// podData := podResult.data
+
+		podData := podInfoList[clusterName]
+
 		if podData["kind"].(string) == "PodList" {
 			podItems := podData["items"].([]interface{})
 
@@ -241,6 +260,7 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 	if gCluster[0] == "allClusters" {
 		clusternames = append(clusternames, "openmcp")
 	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clusterName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
@@ -249,14 +269,30 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, cluster := range clusternames {
-		hpaURL := "https://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
-		allUrls = append(allUrls, hpaURL)
+	ciChan := make(chan ChanRes, len(clusternames))
+	defer close(ciChan)
+	hpaInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusternames {
+		url := "https://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
 	}
 
-	for _, arg := range allUrls[0:] {
-		go CallAPI(token, arg, ch)
+	for range clusternames {
+		comm := <-ciChan
+		hpaInfoList[comm.name] = comm.result
 	}
+
+	// for _, cluster := range clusternames {
+	// 	hpaURL := "https://" + openmcpURL + "/apis/autoscaling/v1/horizontalpodautoscalers?clustername=" + cluster
+	// 	allUrls = append(allUrls, hpaURL)
+	// }
+
+	// for _, arg := range allUrls[0:] {
+	// 	go CallAPI(token, arg, ch)
+	// }
 
 	var results = make(map[string]interface{})
 	for range allUrls[0:] {
@@ -266,11 +302,17 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 
 	var HPAResList []HPARes
 
-	for key, result := range results {
-		clusterName := string(key[strings.LastIndex(key, "=")+1:])
+	// for key, result := range results {
+	for _, clusterName := range clusternames {
+		// clusterName := string(key[strings.LastIndex(key, "=")+1:])
+		hpaData := hpaInfoList[clusterName]
 
-		if result.(map[string]interface{})["kind"].(string) == "HorizontalPodAutoscalerList" {
-			items := result.(map[string]interface{})["items"].([]interface{})
+		// if result.(map[string]interface{})["kind"].(string) == "HorizontalPodAutoscalerList" {
+
+		if hpaData["kind"].(string) == "HorizontalPodAutoscalerList" {
+			items := hpaData["items"].([]interface{})
+			// items := result.(map[string]interface{})["items"].([]interface{})
+
 			for _, item := range items {
 				hpaName := item.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 

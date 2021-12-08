@@ -176,11 +176,28 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan := make(chan ChanRes, len(clusterNames))
+	defer close(ciChan)
+	deploymentInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		deploymentInfoList[comm.name] = comm.result
+	}
+
 	for _, clusterName := range clusterNames {
-		deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
-		go CallAPI(token, deploymentURL, ch)
-		deploymentResult := <-ch
-		deploymentData := deploymentResult.data
+		// deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
+		// go CallAPI(token, deploymentURL, ch)
+		// deploymentResult := <-ch
+		// deploymentData := deploymentResult.data
+		deploymentData := deploymentInfoList[clusterName]
 		deploymentItems := deploymentData["items"].([]interface{})
 
 		// get deployement Information

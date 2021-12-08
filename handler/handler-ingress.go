@@ -38,12 +38,30 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan := make(chan ChanRes, len(clusterNames))
+	defer close(ciChan)
+	ingressInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		ingressInfoList[comm.name] = comm.result
+	}
+
 	for _, clusterName := range clusterNames {
+		// ingressURL := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + clusterName
+		// go CallAPI(token, ingressURL, ch)
+		// ingressResult := <-ch
+		// ingressData := ingressResult.data
 		ingress := IngerssInfo{}
-		ingressURL := "https://" + openmcpURL + "/apis/networking.k8s.io/v1beta1/ingresses?clustername=" + clusterName
-		go CallAPI(token, ingressURL, ch)
-		ingressResult := <-ch
-		ingressData := ingressResult.data
+		ingressData := ingressInfoList[clusterName]
+
 		if ingressData["kind"].(string) == "IngressList" {
 			ingressItems := ingressData["items"].([]interface{})
 

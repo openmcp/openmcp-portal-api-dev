@@ -36,7 +36,7 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+
 		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
 			if clusterType == "Ready" {
@@ -45,14 +45,33 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan := make(chan ChanRes, len(clusterNames))
+	defer close(ciChan)
+	deploymentInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		deploymentInfoList[comm.name] = comm.result
+	}
+
 	for _, clusterName := range clusterNames {
+		// // get node names, cpu(capacity)
+		// deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
+		// go CallAPI(token, deploymentURL, ch)
+		// deploymentResult := <-ch
+		// // fmt.Println(deploymentResult)
+		// deploymentData := deploymentResult.data
+
 		deployment := DeploymentInfo{}
-		// get node names, cpu(capacity)
-		deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
-		go CallAPI(token, deploymentURL, ch)
-		deploymentResult := <-ch
-		// fmt.Println(deploymentResult)
-		deploymentData := deploymentResult.data
+		deploymentData := deploymentInfoList[clusterName]
+
 		if deploymentData["kind"].(string) == "DeploymentList" {
 			deploymentItems := deploymentData["items"].([]interface{})
 

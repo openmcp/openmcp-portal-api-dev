@@ -52,12 +52,31 @@ func Services(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ciChan := make(chan ChanRes, len(clusterNames))
+	defer close(ciChan)
+	serviceInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/api/v1/services?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		serviceInfoList[comm.name] = comm.result
+	}
+
 	for _, clusterName := range clusterNames {
+		// serviceURL := "https://" + openmcpURL + "/api/v1/services?clustername=" + clusterName
+		// go CallAPI(token, serviceURL, ch)
+		// serviceResult := <-ch
+		// serviceData := serviceResult.data
+
+		serviceData := serviceInfoList[clusterName]
 		service := ServiceInfo{}
-		serviceURL := "https://" + openmcpURL + "/api/v1/services?clustername=" + clusterName
-		go CallAPI(token, serviceURL, ch)
-		serviceResult := <-ch
-		serviceData := serviceResult.data
+
 		if serviceData["kind"].(string) == "ServiceList" {
 			serviceItems := serviceData["items"].([]interface{})
 

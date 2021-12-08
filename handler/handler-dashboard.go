@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"net/http"
 	"strings"
 )
@@ -59,8 +59,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 			region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
 			zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-			provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-			fmt.Println(region + " : " + zone + " : " + provider)
 
 			clusterlist[region] =
 				Region{
@@ -311,8 +309,6 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 
 				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
 				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-				fmt.Println(region + " : " + zone + " : " + provider)
 
 				clusterlist[region] =
 					Region{
@@ -399,8 +395,6 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 
 				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
 				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-				fmt.Println(region + " : " + zone + " : " + provider)
 
 				clusterlist[region] =
 					Region{
@@ -422,7 +416,6 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func DbStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("DbStatus")
 	// start := time.Now()
 	ch := make(chan Resultmap)
 	token := GetOpenMCPToken()
@@ -719,7 +712,6 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
 				region := ""
-				zone := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
@@ -735,9 +727,6 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				}
 
 				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-				fmt.Println(region + " : " + zone + " : " + provider)
 
 				cluster := Clusters{}
 				cluster.Id = region + "-" + clustername
@@ -920,8 +909,6 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
-				region := ""
-				zone := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
@@ -938,11 +925,6 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 					clusterStatus = "Unknown"
 					clusterUnknownCnt++
 				}
-
-				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-				fmt.Println(region + " : " + zone + " : " + provider)
 
 				// GET PODS
 				// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
@@ -981,7 +963,6 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 						pod.Status = status
 						podData := PodSubInfo{clustername, namespace}
 						pod.Data = podData
-						// fmt.Println(clustername + " : " + app + pod.Data.Namespace)
 
 						serviceClusterlist[app] =
 							Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
@@ -1113,7 +1094,6 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
 			if joinStatus == "JOIN" {
 				region := ""
-				zone := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
@@ -1129,9 +1109,6 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 				}
 
 				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
-				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
-				provider := GetStringElement(clusterData["spec"], []string{"clusterPlatformType"})
-				fmt.Println(region + " : " + zone + " : " + provider)
 
 				cluster := Clusters{}
 				cluster.Id = region + "-" + clustername

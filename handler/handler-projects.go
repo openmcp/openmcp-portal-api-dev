@@ -43,7 +43,7 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	ciChan := make(chan ChanRes, len(clusterNames))
 	defer close(ciChan)
 	projectInfoList := make(map[string]map[string]interface{})
 
