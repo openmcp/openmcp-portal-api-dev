@@ -46,17 +46,6 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 
 	podsCount := make(map[string]int)
 
-	/////////////////////////////////////////////////////////////////////////////
-	// ㅇ openmcp cluster를 볼 필요가 있나???
-	// clusterNames = append(clusterNames, "openmcp")
-	// nodeCluster.Name = "openmcp"
-	// nodeCluster.Zones = "KR"
-	// nodeCluster.Region = "AS"
-	// nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
-	/////////////////////////////////////////////////////////////////////////////
-	// fmt.Println("clusterDatalen", len(clusterData["items"].([]interface{})))
-	// startTime := time.Now()
-
 	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
 	defer close(ciChan)
 	clusterInfoList := make(map[string]map[string]interface{})

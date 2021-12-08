@@ -23,29 +23,48 @@ func Projects(w http.ResponseWriter, r *http.Request) {
 	clusters := <-ch
 	clusterData := clusters.data
 
-	resProject := ProjectRes{}
 	clusterNames := []string{}
+	resProject := ProjectRes{}
+
 	if gCluster[0] == "allClusters" {
 		clusterNames = append(clusterNames, "openmcp")
 	}
+
 	//get clusters Information
 	for _, element := range clusterData["items"].([]interface{}) {
-		clusterName := GetStringElement(element, []string{"metadata", "name"})
-		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
+		cName := GetStringElement(element, []string{"metadata", "name"})
+
+		if FindInInterfaceArr(gCluster, cName) || gCluster[0] == "allClusters" {
 			// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 			clusterType := GetStringElement(element, []string{"status", "conditions", "type"})
 			if clusterType == "Ready" {
-				clusterNames = append(clusterNames, clusterName)
+				clusterNames = append(clusterNames, cName)
 			}
 		}
+	}
 
+	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	defer close(ciChan)
+	projectInfoList := make(map[string]map[string]interface{})
+
+	for _, cName := range clusterNames {
+		url := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + cName
+		go func(cName string) {
+			CallAPIGO(ciChan, url, cName, token)
+		}(cName)
+	}
+
+	for range clusterNames {
+		comm := <-ciChan
+		projectInfoList[comm.name] = comm.result
 	}
 
 	for _, clusterName := range clusterNames {
-		projectURL := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + clusterName
-		go CallAPI(token, projectURL, ch)
-		projectResult := <-ch
-		projectData := projectResult.data
+		// projectURL := "https://" + openmcpURL + "/api/v1/namespaces?clustername=" + clusterName
+		// go CallAPI(token, projectURL, ch)
+		// projectResult := <-ch
+		projectData := projectInfoList[clusterName]
+
 		if projectData["kind"].(string) == "NamespaceList" {
 			projectItems := projectData["items"].([]interface{})
 

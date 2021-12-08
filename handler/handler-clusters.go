@@ -43,6 +43,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			CallAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
+	
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
 		clusterInfoList[comm.name] = comm.result
