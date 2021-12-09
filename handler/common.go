@@ -55,6 +55,7 @@ func GetOpenMCPToken() string {
 	buff := bytes.NewBuffer(pbytes)
 
 	// resp, err := client.Get("https://" + openmcpURL + "/token?username=openmcp&password=keti")
+
 	resp, err := client.Post("https://"+openmcpURL+"/token", "application/json", buff)
 
 	if err != nil {
@@ -90,19 +91,26 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	// var client http.Client
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+			DisableKeepAlives: true,
 		},
+		Timeout: 10 * time.Second,
 	}
-	resp, err := client.Do(req)
 
+	// ur := rand.Float64()
+	// fmt.Println(url, "time:1", time.Since(start).Seconds(), time.Now(), ur)
+	resp, err := client.Do(req)
+	// fmt.Println(url, "time:2", time.Since(start).Seconds(), time.Now(), ur)
 	if err != nil {
 		// log.Fatal(err)
 		fmt.Print(err)
+		return
 	}
+	resp.Close = true
 	var data map[string]interface{}
-
+	// fmt.Println(url, "time:3", time.Since(start).Seconds(), time.Now(), ur)
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
-
+	// fmt.Println(url, "time:4", time.Since(start).Seconds(), time.Now(), ur)
 	defer resp.Body.Close() // 리소스 누출 방지
 	if err != nil {
 		// ch <- fmt.Sprintf("while reading %s: %v", url, err)
