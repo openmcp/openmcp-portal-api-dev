@@ -22,7 +22,7 @@ func InitPortalConfig() string {
 	portalConfig.Portal.OpenmcpURL = os.Getenv("OPENMCPURL")
 	portalConfig.Portal.Port = os.Getenv("OPENMCPURLPORT")
 	portalConfig.Portal.Kubeconfig = os.Getenv("KUBECONFIG")
-
+	portalConfig.Portal.OpenmcpClusterName = os.Getenv("OPENMCPCLUSTERNAME")
 	return portalConfig.Portal.OpenmcpURL + ":" + portalConfig.Portal.Port
 }
 
