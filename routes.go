@@ -15,7 +15,12 @@ type Route struct {
 type Routes []Route
 
 var routes = Routes{
-
+	Route{
+		"getkialiurl",
+		"GET",
+		"/apis/getkialiurl",
+		handler.GetKialiURL,
+	},
 	Route{
 		"getpubliccloudclusters",
 		"POST",
