@@ -459,3 +459,42 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(resServiceOverview)
 }
+
+func GetKialiURL(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	clusterName := r.URL.Query().Get("clusterName")
+
+	serviceURL := "https://" + openmcpURL + "/api/v1/namespaces/istio-system/services/kiali?clustername=" + clusterName
+	fmt.Println(serviceURL)
+	go CallAPI(token, serviceURL, ch)
+	serviceResult := <-ch
+	serviceData := serviceResult.data
+
+	externalIP := GetStringElement(serviceData, []string{"status", "loadBalancer", "ingress", "ip"})
+	spec := GetArrayElement(serviceData, []string{"spec", "ports"})
+	fmt.Println(externalIP)
+	name := ""
+	port := 0.0
+	for _, s := range spec {
+		name = GetStringElement(s, []string{"name"})
+		if name == "http" {
+			port = GetFloat64Element(s, []string{"port"})
+			break
+		}
+	}
+	fmt.Println(externalIP, port)
+
+	type ret struct {
+		IP   string  `json:"ip"`
+		PORT float64 `json:"port"`
+	}
+
+	kialiURL := ret{externalIP, port}
+
+	json.NewEncoder(w).Encode(kialiURL)
+}
