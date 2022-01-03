@@ -358,11 +358,40 @@ var routes = Routes{
 		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}",
 		handler.GetDeploymentOverview,
 	},
+
 	Route{
 		"replicaStatus",
 		"GET",
 		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/{deploymentName}/replica_status",
 		handler.GetDeploymentReplicaStatus,
+	},
+
+	Route{
+		"deploymentCreate",
+		"POST",
+		"/apis/deployments/create",
+		handler.CreateDeployments,
+	},
+
+	Route{
+		"deploymentDelete",
+		"POST",
+		"/apis/deployments/delete",
+		handler.DeleteDeployments,
+	},
+
+	Route{
+		"omcpDeploymentOverview",
+		"POST",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/omcp-deployment/{deploymentName}",
+		handler.GetOmcpDeploymentOverview,
+	},
+
+	Route{
+		"omcpDeploymentReplicaStatus",
+		"GET",
+		"/apis/clsuters/{clusterName}/projects/{projectName}/deployments/omcp-deployment/{deploymentName}/replica_status",
+		handler.GetOmcpDeploymentReplicaStatus,
 	},
 
 	Route{

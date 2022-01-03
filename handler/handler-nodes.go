@@ -733,6 +733,7 @@ func NodesMetric(w http.ResponseWriter, r *http.Request) {
 	for _, clusterName := range clusterNames {
 		nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 		go CallAPI(token, nodeURL, ch)
+
 		nodeResult := <-ch
 		nodeData := nodeResult.data
 		nodeItems := nodeData["items"].([]interface{})
@@ -824,13 +825,10 @@ func NodesMetric(w http.ResponseWriter, r *http.Request) {
 			fsUnit := Unit{"Gi", fsStatus}
 
 			nodeResUsage = append(nodeResUsage, NodeResourceUsage2{clusterName, nodeName, cpuUnit, memUnit, fsUnit})
-
 		}
-
 	}
 
 	responseJSON := nodeResUsage
-
 	json.NewEncoder(w).Encode(responseJSON)
 
 }

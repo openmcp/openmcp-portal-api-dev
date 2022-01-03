@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,6 +51,8 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	clusterName := data["cluster"].(string)
 	namespace := data["namespace"].(string)
 	value := data["value"].(map[string]interface{})
+
+	fmt.Println(value)
 
 	var jsonErrs []jsonErr
 	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/migrations?clustername=" + clusterName

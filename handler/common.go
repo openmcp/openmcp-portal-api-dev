@@ -101,13 +101,14 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	// fmt.Println(url, "time:1", time.Since(start).Seconds(), time.Now(), ur)
 	resp, err := client.Do(req)
 	// fmt.Println(url, "time:2", time.Since(start).Seconds(), time.Now(), ur)
+	var data map[string]interface{}
 	if err != nil {
 		// log.Fatal(err)
-		fmt.Print(err)
+		fmt.Println(err)
 		return
 	}
+	
 	resp.Close = true
-	var data map[string]interface{}
 	// fmt.Println(url, "time:3", time.Since(start).Seconds(), time.Now(), ur)
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	// fmt.Println(url, "time:4", time.Since(start).Seconds(), time.Now(), ur)
@@ -115,14 +116,13 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 	if err != nil {
 		// ch <- fmt.Sprintf("while reading %s: %v", url, err)
 		// return
-		fmt.Print(err)
+		fmt.Println(err)
 	}
 	json.Unmarshal([]byte(bodyBytes), &data)
 
 	secs := time.Since(start).Seconds()
 
 	// ch <- fmt.Sprintf("%.2fs %s %v", secs, url, data)
-
 	ch <- Resultmap{secs, url, data}
 }
 
@@ -181,15 +181,22 @@ func CallPostAPI(url string, headtype string, body interface{}) ([]byte, error) 
 		},
 	}
 
+	fmt.Println(req)
+	fmt.Println("req =========== start")
+
 	resp, err := client.Do(req)
 
+	fmt.Println("req =========== end")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
+	fmt.Println("respBody =========== start")
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
+
+	fmt.Println("respBody =========== end")
 
 	if err != nil {
 		return nil, err
@@ -259,6 +266,41 @@ func CallPatchAPI2(url string, headtype string, body map[string]interface{}) ([]
 
 	req.Header.Add("Authorization", bearer)
 	req.Header.Set("Content-Type", headtype)
+	// Send req using http Client
+	// var client http.Client
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	str := string(respBody)
+	fmt.Println(str)
+	return respBody, nil
+}
+
+func CallDeleteAPI(url string) ([]byte, error) {
+	token := GetOpenMCPToken()
+	// fmt.Println("yaml   :", yaml)
+	var bearer = "Bearer " + token
+
+	req, err := http.NewRequest("DELETE", url, nil)
+
+	req.Header.Add("Authorization", bearer)
 	// Send req using http Client
 	// var client http.Client
 

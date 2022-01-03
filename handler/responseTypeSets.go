@@ -215,6 +215,7 @@ type DeploymentInfo struct {
 	Uid         string                 `json:"uid,omitempty"`
 	Labels      map[string]interface{} `json:"labels"`
 	Resources   []interface{}          `json:"resources"`
+	Kind        string                 `json:"kind"`
 }
 
 type DeploymentOverview struct {

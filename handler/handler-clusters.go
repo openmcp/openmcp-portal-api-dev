@@ -43,7 +43,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			CallAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
-	
+
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
 		clusterInfoList[comm.name] = comm.result
@@ -370,45 +370,45 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 			if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 				if joinStatus == "UNJOIN" {
 					// endpoint := element.(map[string]interface{})["endpoint"].(string)
-					nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
-					go CallAPI(token, nodeURL, ch)
-					nodeResult := <-ch
-					nodeData := nodeResult.data
-					if nodeData["kind"].(string) != "NodeList" {
-						continue
-					}
-					nodeItems := nodeData["items"].([]interface{})
+					// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
+					// go CallAPI(token, nodeURL, ch)
+					// nodeResult := <-ch
+					// nodeData := nodeResult.data
+					// if nodeData["kind"].(string) != "NodeList" {
+					// 	continue
+					// }
+					// nodeItems := nodeData["items"].([]interface{})
 
 					provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
-					region := "-"
-					zone := "-"
+					region := GetStringElement(element, []string{"spec", "nodeInfo", "region"})
+					zone := GetStringElement(element, []string{"spec", "nodeInfo", "zone"})
+					endpoint := GetStringElement(element, []string{"spec", "serverIP"})
+					// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+					// go CallAPI(token, clusterurl, ch)
+					// clusters2 := <-ch
+					// clusterData2 := clusters2.data
 
-					clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
-					go CallAPI(token, clusterurl, ch)
-					clusters2 := <-ch
-					clusterData2 := clusters2.data
+					// endpoint := ""
+					// for _, element := range clusterData2["items"].([]interface{}) {
+					// 	targetClusterName := GetStringElement(element, []string{"metadata", "name"})
 
-					endpoint := ""
-					for _, element := range clusterData2["items"].([]interface{}) {
-						targetClusterName := GetStringElement(element, []string{"metadata", "name"})
+					// 	if clusterName == targetClusterName {
+					// 		endpoint = GetStringElement(element, []string{"spec", "apiEndpoint"})
+					// 		endpoint = strings.Replace(endpoint, "https://", "", -1)
+					// 		endpoint = strings.Replace(endpoint, "http://", "", -1)
+					// 		address := strings.Split(endpoint, ":")
+					// 		endpoint = address[0]
+					// 	}
+					// }
 
-						if clusterName == targetClusterName {
-							endpoint = GetStringElement(element, []string{"spec", "apiEndpoint"})
-							endpoint = strings.Replace(endpoint, "https://", "", -1)
-							endpoint = strings.Replace(endpoint, "http://", "", -1)
-							address := strings.Split(endpoint, ":")
-							endpoint = address[0]
-						}
-					}
+					// for _, element := range nodeItems {
+					// 	isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
-					for _, element := range nodeItems {
-						isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
-
-						if isMaster != "-" && isMaster == "" {
-							zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-							region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
-						}
-					}
+					// 	if isMaster != "-" && isMaster == "" {
+					// 		zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+					// 		region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+					// 	}
+					// }
 
 					res := joinable{clusterName, endpoint, provider, region, zone}
 					joinableLists = append(joinableLists, res)
