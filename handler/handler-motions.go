@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,8 +50,6 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	clusterName := data["cluster"].(string)
 	namespace := data["namespace"].(string)
 	value := data["value"].(map[string]interface{})
-
-	fmt.Println(value)
 
 	var jsonErrs []jsonErr
 	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/migrations?clustername=" + clusterName
@@ -432,10 +429,8 @@ func SnapshotRestore(w http.ResponseWriter, r *http.Request) {
 
 		var dataRes2 map[string]interface{}
 		json.Unmarshal(e, &dataRes2)
-		// fmt.Println(string(e))
 
 		restoreURL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/snapshotrestores?clustername=" + clusterName
-		// fmt.Println(dataRes2)
 		resp, err := CallPostAPI(restoreURL, "application/json", dataRes2)
 		if err != nil {
 			msg = jsonErr{503, "failed", "request fail"}
@@ -458,4 +453,64 @@ func SnapshotRestore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(jsonErrs)
+}
+
+func GlobalCache(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan Resultmap)
+	token := GetOpenMCPToken()
+
+	type GlobalCacheHistory struct {
+		ImageCount float64 `json:"image_count"`
+		ImageName  string  `json:"image_name"`
+		Timestamp  string  `json:"time"`
+	}
+
+	type GlobalCacheUpdateList struct {
+		ImageStatus string `json:"image_status"`
+		ImageName   string `json:"image_name"`
+		Timestamp   string `json:"time"`
+	}
+
+	type GlobalCache struct {
+		GlobalCacheHistory    []GlobalCacheHistory    `json:"gc_history"`
+		GlobalCacheUpdateList []GlobalCacheUpdateList `json:"gc_update_list"`
+	}
+	gcacheRes := GlobalCache{}
+	// gcacheHistory := GlobalCacheHistory{}
+	// gcacheUpdateList := GlobalCacheUpdateList{}
+
+	// migRes := MigrationRes{}
+	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/caches/cache-scheduler?clustername=openmcp"
+	go CallAPI(token, URL, ch)
+
+	result := <-ch
+	gcData := result.data
+	gcHistory := GetArrayElement(gcData, []string{"status", "History"})
+	gcUpdateList := GetArrayElement(gcData, []string{"status", "UpdateList"})
+
+	latestTimestamp := "1999-01-01 01:01:01"
+	for _, history := range gcHistory {
+		timestamp := GetStringElement(history, []string{"Timestamp"})
+
+		if latestTimestamp < timestamp {
+			gcacheRes = GlobalCache{}
+			latestTimestamp = timestamp
+
+			imgeList := GetArrayElement(history, []string{"ImageList"})
+			for _, element := range imgeList {
+				imageCount := GetFloat64Element(element, []string{"ImageCount"})
+				imageName := GetStringElement(element, []string{"ImageNmae"})
+
+				gcacheRes.GlobalCacheHistory = append(gcacheRes.GlobalCacheHistory, GlobalCacheHistory{imageCount, imageName, latestTimestamp})
+			}
+		}
+	}
+	for _, updateData := range gcUpdateList {
+		imageName := GetStringElement(updateData, []string{"ImageName"})
+		imageStatus := GetStringElement(updateData, []string{"ImageStatus"})
+		time := GetStringElement(updateData, []string{"Timestamp"})
+		gcacheRes.GlobalCacheUpdateList = append(gcacheRes.GlobalCacheUpdateList, GlobalCacheUpdateList{imageStatus, imageName, time})
+	}
+
+	json.NewEncoder(w).Encode(gcacheRes)
 }

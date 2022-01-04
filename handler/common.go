@@ -107,7 +107,7 @@ func CallAPI(token string, url string, ch chan<- Resultmap) {
 		fmt.Println(err)
 		return
 	}
-	
+
 	resp.Close = true
 	// fmt.Println(url, "time:3", time.Since(start).Seconds(), time.Now(), ur)
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -158,7 +158,6 @@ func PostYaml(url string, yaml io.Reader) ([]byte, error) {
 	str := string(respBody)
 	fmt.Println(str)
 	return respBody, nil
-
 }
 
 func CallPostAPI(url string, headtype string, body interface{}) ([]byte, error) {

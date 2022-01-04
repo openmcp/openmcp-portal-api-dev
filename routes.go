@@ -186,6 +186,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"snapshotrestore",
+		"GET",
+		"/apis/globalcache",
+		handler.GlobalCache,
+	},
+
+	Route{
 		"addec2node",
 		"POST",
 		"/apis/addec2node",

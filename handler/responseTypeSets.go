@@ -634,8 +634,9 @@ type SnapshotLogSubInfo struct {
 }
 
 type WorldMapClusterInfo struct {
-	Country string `json:"country"`
-	Value   int    `json:"value"`
+	Country     string `json:"country"`
+	Value       int    `json:"value"`
+	CreatedTime string `json:"created_time"`
 }
 
 type ChanRes struct {

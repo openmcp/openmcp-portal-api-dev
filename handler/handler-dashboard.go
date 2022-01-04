@@ -597,8 +597,9 @@ func DbWorldClusterMap(w http.ResponseWriter, r *http.Request) {
 			if joinStatus == "JOIN" {
 				region := ""
 				region = GetStringElement(element, []string{"spec", "nodeInfo", "region"})
+				createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
 				wmcCountMap[region] =
-					WorldMapClusterInfo{region, wmcCountMap[region].Value + 1}
+					WorldMapClusterInfo{region, wmcCountMap[region].Value + 1, createdTime}
 			}
 		}
 	}
@@ -633,12 +634,13 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Pods struct {
-		Id     string     `json:"id"`
-		Name   string     `json:"name"`
-		Path   string     `json:"path"`
-		Value  string     `json:"value"`
-		Status string     `json:"status"`
-		Data   PodSubInfo `json:"data"`
+		Id          string     `json:"id"`
+		Name        string     `json:"name"`
+		Path        string     `json:"path"`
+		Value       string     `json:"value"`
+		Status      string     `json:"status"`
+		CreatedTime string     `json:"created_time"`
+		Data        PodSubInfo `json:"data"`
 	}
 
 	type Clusters struct {
@@ -748,6 +750,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				for _, element := range podItems {
 					pod := Pods{}
 					podName := GetStringElement(element, []string{"metadata", "name"})
+					createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
 					status := GetStringElement(element, []string{"status", "phase"})
 					namespace := GetStringElement(element, []string{"metadata", "namespace"})
 
@@ -769,6 +772,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 						pod.Value = "5"
 						pod.Path = pathPod
 						pod.Status = status
+						pod.CreatedTime = createdTime
 						podData := PodSubInfo{clustername, namespace}
 						pod.Data = podData
 						cluster.Pods = append(cluster.Pods, pod)
@@ -823,12 +827,13 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Pods struct {
-		Id     string     `json:"id"`
-		Name   string     `json:"name"`
-		Path   string     `json:"path"`
-		Value  string     `json:"value"`
-		Status string     `json:"status"`
-		Data   PodSubInfo `json:"data"`
+		Id          string     `json:"id"`
+		Name        string     `json:"name"`
+		Path        string     `json:"path"`
+		Value       string     `json:"value"`
+		Status      string     `json:"status"`
+		CreatedTime string     `json:"created_time"`
+		Data        PodSubInfo `json:"data"`
 	}
 
 	type Clusters struct {
@@ -943,6 +948,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 					if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
 						podName := GetStringElement(element, []string{"metadata", "name"})
 						status := GetStringElement(element, []string{"status", "phase"})
+						createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
 						// project := GetStringElement(element, []string{"metadata", "namespace"})
 						// podIP := "-"
 						// node := "-"
@@ -961,6 +967,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 						pod.Value = "5"
 						pod.Path = pathPod
 						pod.Status = status
+						pod.CreatedTime = createdTime
 						podData := PodSubInfo{clustername, namespace}
 						pod.Data = podData
 
