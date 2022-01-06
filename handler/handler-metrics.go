@@ -21,6 +21,11 @@ func ClusterList(w http.ResponseWriter, r *http.Request) {
 	clusterData := clusters.data
 
 	var clusternames []string
+
+	if gCluster[0] == "allClusters" {
+		clusternames = append(clusternames, "openmcp")
+	}
+
 	for _, element := range clusterData["items"].([]interface{}) {
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 

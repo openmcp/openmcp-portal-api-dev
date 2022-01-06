@@ -74,7 +74,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 
 		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 				// element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 				// provider := GetStringElement(element, []string{"metadata", "provider"})
@@ -723,7 +723,7 @@ func NodesMetric(w http.ResponseWriter, r *http.Request) {
 
 	for _, element := range clusterData["items"].([]interface{}) {
 		joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-		if joinStatus == "JOIN" {
+		if joinStatus == "JOIN" || joinStatus == "JOINING" {
 			clusterName := GetStringElement(element, []string{"metadata", "name"})
 			clusterNames = append(clusterNames, clusterName)
 		}

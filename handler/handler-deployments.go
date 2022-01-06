@@ -550,7 +550,7 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	data := GetJsonBody(r.Body)
 	defer r.Body.Close() // 리소스 누출 방지
 
-	deployedClusters := data["deployClusters"].([]interface{})
+	deployedClusters := data["deployClusters"].([]interface{}) //매핑되어 있는 클러스터 Array리스트
 
 	vars := mux.Vars(r)
 	clusterName := vars["clusterName"]
@@ -577,65 +577,40 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	uid := GetStringElement(deploymentData, []string{"metadata", "uid"})
 
 	status := "-"
-	availableReplicas := GetInterfaceElement(deploymentData, []string{"status", "availableReplicas"})
-	readyReplicas := GetInterfaceElement(deploymentData, []string{"status", "readyReplicas"})
+	// availableReplicas := GetInterfaceElement(deploymentData, []string{"status", "availableReplicas"})
+	// readyReplicas := GetInterfaceElement(deploymentData, []string{"status", "readyReplicas"})
 	replicas := GetFloat64Element(deploymentData, []string{"status", "replicas"})
 
 	replS := fmt.Sprintf("%.0f", replicas)
 
-	if readyReplicas != nil {
-		readyReplS := fmt.Sprintf("%.0f", readyReplicas)
-		status = readyReplS + "/" + replS
-	} else if availableReplicas == nil {
-		status = "0/" + replS
-	} else {
-		status = "0/0"
-	}
+	// if readyReplicas != nil {
+	// 	readyReplS := fmt.Sprintf("%.0f", readyReplicas)
+	// 	status = readyReplS + "/" + replS
+	// } else if availableReplicas == nil {
+	// 	status = "0/" + replS
+	// } else {
+	// 	status = "0/0"
+	// }
 
 	status = replS
 
 	// image := GetStringElement(deploymentData, []string{"spec", "template", "spec", "containers", "image"})
 	image := ""
+	port := PortInfo{}
+
 	var resources []interface{}
+
 	containers := GetArrayElement(deploymentData, []string{"spec", "template", "spec", "template", "spec", "containers"})
+
 	for i, element := range containers {
+		//images
 		if len(containers)-1 == i {
 			image = image + GetStringElement(element, []string{"image"})
 		} else {
 			image = image + GetStringElement(element, []string{"image"}) + "|"
 		}
-	}
 
-	created_time := GetStringElement(deploymentData, []string{"metadata", "creationTimestamp"})
-
-	labels := make(map[string]interface{})
-	labelCheck := GetInterfaceElement(deploymentData, []string{"metadata", "labels"})
-	if labelCheck == nil {
-		labels = map[string]interface{}{}
-	} else {
-		for key, val := range labelCheck.(map[string]interface{}) {
-			labels[key] = val
-		}
-	}
-
-	deployment.Name = name
-	deployment.Status = status
-	deployment.Cluster = clusterName
-	deployment.Project = namespace
-	deployment.Image = image
-	deployment.CreatedTime = created_time
-	deployment.Uid = uid
-	deployment.Labels = labels
-	deployment.Resources = resources
-	deployment.Kind = kind
-
-	resDeploymentOverview.Info = deployment
-
-	//ports
-	port := PortInfo{}
-
-	// containers := GetArrayElement(deploymentData, []string{"spec", "template", "spec", "containers"})
-	for _, element := range containers {
+		//ports
 		ports := GetArrayElement(element, []string{"ports"})
 		cNames := ""
 		cPorts := ""
@@ -657,10 +632,37 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 		port.Port = cPorts
 		port.Protocol = cProtocols
 		if port.Name != "" && port.Port != "" && port.Protocol != "" {
+			//set ports
 			resDeploymentOverview.Ports = append(resDeploymentOverview.Ports, port)
 		}
 	}
 
+	created_time := GetStringElement(deploymentData, []string{"metadata", "creationTimestamp"})
+	labels := make(map[string]interface{})
+	labelCheck := GetInterfaceElement(deploymentData, []string{"metadata", "labels"})
+	if labelCheck == nil {
+		labels = map[string]interface{}{}
+	} else {
+		for key, val := range labelCheck.(map[string]interface{}) {
+			labels[key] = val
+		}
+	}
+
+	//set basic_info
+	deployment.Name = name
+	deployment.Status = status
+	deployment.Cluster = clusterName
+	deployment.Project = namespace
+	deployment.Image = image
+	deployment.CreatedTime = created_time
+	deployment.Uid = uid
+	deployment.Labels = labels
+	deployment.Resources = resources
+	deployment.Kind = kind
+
+	resDeploymentOverview.Info = deployment
+
+	// if portInfo is null
 	if len(resDeploymentOverview.Ports) == 0 {
 		resDeploymentOverview.Ports = []PortInfo{}
 	}
@@ -672,14 +674,54 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 	// Pod에서
 	// > ownerreferences[{kind:"Deployment",name}] >
 
+	ciChanRepl := make(chan ChanRes, len(deployedClusters))
+	defer close(ciChanRepl)
+	ciChanPod := make(chan ChanRes, len(deployedClusters))
+	defer close(ciChanPod)
+	ciChanEvent := make(chan ChanRes, len(deployedClusters))
+	defer close(ciChanEvent)
+
+	replInfoList := make(map[string]map[string]interface{})
+	podInfoList := make(map[string]map[string]interface{})
+	eventInfoList := make(map[string]map[string]interface{})
+
+	for _, item := range deployedClusters {
+		clusterNm := item.(string)
+		replURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterNm
+		podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterNm
+		eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterNm
+
+		go func(clusterNm string) {
+			CallAPIGO(ciChanRepl, replURL, clusterNm, token)
+		}(clusterNm)
+		go func(clusterNm string) {
+			CallAPIGO(ciChanPod, podURL, clusterNm, token)
+		}(clusterNm)
+		go func(clusterNm string) {
+			CallAPIGO(ciChanEvent, eventURL, clusterNm, token)
+		}(clusterNm)
+	}
+
+	for range deployedClusters {
+		commRepl := <-ciChanRepl
+		commPod := <-ciChanPod
+		commEvent := <-ciChanEvent
+		// fmt.Println("1111", comm.name)
+		replInfoList[commRepl.name] = commRepl.result
+		podInfoList[commPod.name] = commPod.result
+		eventInfoList[commEvent.name] = commEvent.result
+	}
+
 	// replicasets
 	for _, item := range deployedClusters {
 		clusterNm := item.(string)
 		// http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-		replURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterNm
-		go CallAPI(token, replURL, ch)
-		replResult := <-ch
-		replData := replResult.data
+		// replURL := "https://" + openmcpURL + "/apis/apps/v1/namespaces/" + projectName + "/replicasets?clustername=" + clusterNm
+
+		// go CallAPI(token, replURL, ch)
+		// replResult := <-ch
+		// replData := replResult.data
+		replData := replInfoList[clusterNm]
 		replItems := replData["items"].([]interface{})
 
 		// find deployements within replicasets
@@ -699,10 +741,11 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 		// find pods within deployments
 		// replicasets
 		// http://192.168.0.152:31635/apis/apps/v1/namespaces/kube-system/replicasets?clustername=cluster2
-		podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterNm
-		go CallAPI(token, podURL, ch)
-		podResult := <-ch
-		podData := podResult.data
+		// podURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/pods?clustername=" + clusterNm
+		// go CallAPI(token, podURL, ch)
+		// podResult := <-ch
+		// podData := podResult.data
+		podData := podInfoList[clusterNm]
 		podItems := podData["items"].([]interface{})
 
 		for _, element := range podItems {
@@ -747,10 +790,11 @@ func GetOmcpDeploymentOverview(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//events
-		eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterNm
-		go CallAPI(token, eventURL, ch)
-		eventResult := <-ch
-		eventData := eventResult.data
+		// eventURL := "https://" + openmcpURL + "/api/v1/namespaces/" + projectName + "/events?clustername=" + clusterNm
+		// go CallAPI(token, eventURL, ch)
+		// eventResult := <-ch
+		// eventData := eventResult.data
+		eventData := eventInfoList[clusterNm]
 		eventItems := eventData["items"].([]interface{})
 		resDeploymentOverview.Events = []Event{}
 

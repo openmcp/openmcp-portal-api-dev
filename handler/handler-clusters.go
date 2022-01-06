@@ -54,7 +54,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 
 				// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"
@@ -368,7 +368,7 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
 			clusterName := GetStringElement(element, []string{"metadata", "name"})
 			if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
-				if joinStatus == "UNJOIN" {
+				if joinStatus == "UNJOIN" || joinStatus == "UNJOINING" {
 					// endpoint := element.(map[string]interface{})["endpoint"].(string)
 					// nodeURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + clusterName
 					// go CallAPI(token, nodeURL, ch)
@@ -788,7 +788,7 @@ func OpenMCPJoin(w http.ResponseWriter, r *http.Request) {
 	// ]
 
 	var body []interface{}
-	body = append(body, JoinInfo{"replace", "/spec/joinStatus", "JOINING"})
+	body = append(body, JoinInfo{"replace", "/spec/joinStatus", "JOIN"})
 	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressFrom", clusterAddress})
 	body = append(body, JoinInfo{"replace", "/spec/metalLBRange/addressTo", openmcpAddress})
 
@@ -908,7 +908,7 @@ func GetPublicCloudClusters(w http.ResponseWriter, r *http.Request) {
 		clusterName := GetStringElement(element, []string{"metadata", "name"})
 		if FindInInterfaceArr(gCluster, clusterName) || gCluster[0] == "allClusters" {
 
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				provider := GetStringElement(element, []string{"spec", "clusterPlatformType"})
 				if selectedProvider == provider {
 					clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + clusterName + "?clustername=openmcp"

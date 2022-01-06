@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	// "fmt"
 	"net/http"
 	"strings"
 )
@@ -37,7 +36,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		clusterData := clusters.data
 
 		joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-		if joinStatus == "JOIN" {
+		if joinStatus == "JOIN" || joinStatus == "JOINING" {
 			region := ""
 			zone := ""
 			// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
@@ -204,8 +203,9 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() // 리소스 누출 방지
 
 	gCluster := data["g_clusters"].([]interface{})
-
-	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
+	// clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp"
+	// https://115.94.141.62:8080/apis/openmcp.k8s.io/v1alpha1/openmcpclusters/?clustername=openmcp
+	clusterurl := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpclusters/?clustername=openmcp"
 	go CallAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
@@ -257,14 +257,15 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 	var jcinfoList = make(map[string]DashJoinedClusters)
 	var clusterlist = make(map[string]Region)
 	var clusternames []string
-	clusterHealthyCnt := 0
-	clusterUnHealthyCnt := 0
-	clusterUnknownCnt := 0
+	// clusterHealthyCnt := 0
+	// clusterUnHealthyCnt := 0
+	// clusterUnknownCnt := 0
 
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
+			// https://115.94.141.62:8080     /apis/openmcp.k8s.io/v1alpha1/openmcpclusters/?clustername=openmcp
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
 			go CallAPI(token, url, ch)
 			clusters := <-ch
@@ -286,26 +287,28 @@ func DbOmcp(w http.ResponseWriter, r *http.Request) {
 			endpoint = address[0]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 
 				region := ""
 				zone := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
-				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
-				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
-				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
-				clusterStatus := "Healthy"
+				// statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+				// statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+				// statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+				// clusterStatus := "Healthy"
 
-				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
-					clusterStatus = "Unhealthy"
-					clusterUnHealthyCnt++
-				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
-					clusterStatus = "Healthy"
-					clusterHealthyCnt++
-				} else {
-					clusterStatus = "Unknown"
-					clusterUnknownCnt++
-				}
+				// if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+				// 	clusterStatus = "Unhealthy"
+				// 	clusterUnHealthyCnt++
+				// } else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+				// 	clusterStatus = "Healthy"
+				// 	clusterHealthyCnt++
+				// } else {
+				// 	clusterStatus = "Unknown"
+				// 	clusterUnknownCnt++
+				// }
+				clusterStatus := "Healthy"
 
 				region = GetStringElement(clusterData["spec"], []string{"nodeInfo", "region"})
 				zone = GetStringElement(clusterData["spec"], []string{"nodeInfo", "zone"})
@@ -373,7 +376,7 @@ func DbRegionGroups(w http.ResponseWriter, r *http.Request) {
 			clusterData := clusters.data
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				region := ""
 				zone := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
@@ -448,7 +451,7 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 			clusterData := clusters.data
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
@@ -588,16 +591,34 @@ func DbWorldClusterMap(w http.ResponseWriter, r *http.Request) {
 	clusters := <-ch
 	clusterData := clusters.data
 
+	// ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+	// defer close(ciChan)
+	// clusterInfoList := make(map[string]map[string]interface{})
+
+	// for _, element := range clusterData["items"].([]interface{}) {
+	// 	cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+	// 	url := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/namespaces/kube-federation-system/kubefedclusters/" + cName + "?clustername=openmcp"
+	// 	go func(cName string) {
+	// 		CallAPIGO(ciChan, url, cName, token)
+	// 	}(cName)
+	// }
+
+	// for range clusterData["items"].([]interface{}) {
+	// 	comm := <-ciChan
+	// 	clusterInfoList[comm.name] = comm.result
+	// }
+
 	for _, element := range clusterData["items"].([]interface{}) {
 
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
-
 			joinStatus := GetStringElement(element, []string{"spec", "joinStatus"})
-			if joinStatus == "JOIN" {
+
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				region := ""
 				region = GetStringElement(element, []string{"spec", "nodeInfo", "region"})
-				createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+				// createdTime := GetStringElement(clusterData, []string{"metadata", "creationTimestamp"})
+				createdTime := GetStringElement(element, []string{"spec", "joinStatusTime"})
 				wmcCountMap[region] =
 					WorldMapClusterInfo{region, wmcCountMap[region].Value + 1, createdTime}
 			}
@@ -712,7 +733,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				region := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
@@ -913,7 +934,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
@@ -1099,7 +1120,7 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 			clusterData := clusterInfoList[clustername]
 
 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
-			if joinStatus == "JOIN" {
+			if joinStatus == "JOIN" || joinStatus == "JOINING" {
 				region := ""
 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
