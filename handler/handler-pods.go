@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -204,7 +204,7 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, arg := range allUrls[0:] {
-		fmt.Println(arg)
+		// fmt.Println(arg)
 		go CallAPI(token, arg, ch)
 	}
 
@@ -216,7 +216,7 @@ func GetVPAs(w http.ResponseWriter, r *http.Request) {
 	var VPAResList []VPARes
 
 	for key, result := range results {
-		if result.(map[string]interface{})["kind"].(string) == "VerticalPodAutoscalerList" {
+		if result.(map[string]interface{}) != nil && result.(map[string]interface{})["kind"].(string) == "VerticalPodAutoscalerList" {
 			clusterName := string(key[strings.LastIndex(key, "=")+1:])
 			items := result.(map[string]interface{})["items"].([]interface{})
 			for _, item := range items {
@@ -308,8 +308,7 @@ func GetHPAs(w http.ResponseWriter, r *http.Request) {
 		hpaData := hpaInfoList[clusterName]
 
 		// if result.(map[string]interface{})["kind"].(string) == "HorizontalPodAutoscalerList" {
-
-		if hpaData["kind"].(string) == "HorizontalPodAutoscalerList" {
+		if hpaData != nil && hpaData["kind"].(string) == "HorizontalPodAutoscalerList" {
 			items := hpaData["items"].([]interface{})
 			// items := result.(map[string]interface{})["items"].([]interface{})
 
