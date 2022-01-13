@@ -188,6 +188,7 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			cpuCapacity := GetStringElement(element, []string{"status", "capacity", "cpu"})
 			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
 			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
+
 			memoryCapacity := GetStringElement(element, []string{"status", "capacity", "memory"})
 			// element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
@@ -234,8 +235,15 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 					memoryUse = strings.Split(memoryUse, "Ki")[0]
 					memoryUseInt, _ := strconv.Atoi(memoryUse)
 
-					cpuUseSum += cpuUseInt
-					memoryUseSum += memoryUseInt
+					fsUseCheck := GetInterfaceElement(element, []string{"fs", "FsUsedBytes"})
+					// element.(map[string]interface{})["fs"].(map[string]interface{})["FsUsedBytes"]
+					if fsUseCheck == nil {
+						fsUse = "0Ki"
+					} else {
+						fsUse = fsUseCheck.(string)
+					}
+					fsUse = strings.Split(fsUse, "Ki")[0]
+					fsUseInt, _ := strconv.Atoi(fsUse)
 
 					fsCapCheck := GetInterfaceElement(element, []string{"fs", "FsCapacityBytes"})
 					// element.(map[string]interface{})["fs"].(map[string]interface{})["FsCapacityBytes"]
@@ -248,15 +256,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 					fsCapInt, _ := strconv.Atoi(fsCap)
 					fsCapSum += fsCapInt
 
-					fsUseCheck := GetInterfaceElement(element, []string{"fs", "FsUsedBytes"})
-					// element.(map[string]interface{})["fs"].(map[string]interface{})["FsUsedBytes"]
-					if fsUseCheck == nil {
-						fsUse = "0Ki"
-					} else {
-						fsUse = fsUseCheck.(string)
-					}
-					fsUse = strings.Split(fsUse, "Ki")[0]
-					fsUseInt, _ := strconv.Atoi(fsUse)
+					cpuUseSum += cpuUseInt
+					memoryUseSum += memoryUseInt
 					fsUseSum += fsUseInt
 
 					// ntRxCheck := GetInterfaceElement(element, []string{"network", "NetworkRxBytes"})
@@ -528,10 +529,14 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		var kubeVersion string
 		for _, element := range nodeItems {
 			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+
 			if isMaster != "-" && isMaster == "" {
 				zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
 				region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
 			}
+
+			nodeName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+			nodeNameList = append(nodeNameList, nodeName)
 
 			status := element.(map[string]interface{})["status"]
 			var healthCheck = make(map[string]string)
@@ -553,10 +558,9 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			nodeName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 			cpuCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["cpu"].(string)
 			cpuCapInt, _ := strconv.Atoi(cpuCapacity)
-			nodeNameList = append(nodeNameList, nodeName)
+
 			memoryCapacity := element.(map[string]interface{})["status"].(map[string]interface{})["capacity"].(map[string]interface{})["memory"].(string)
 			memoryCapacity = strings.Split(memoryCapacity, "Ki")[0]
 			memoryCapInt, _ := strconv.Atoi(memoryCapacity)
@@ -614,8 +618,10 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 					fsCapaUse = strings.Split(fsCapaUse, "Ki")[0]
 					fsCapaUseInt, _ := strconv.Atoi(fsCapaUse)
 
-					nodeResCPU[nodeName] = math.Ceil((float64(cpuUseInt)/1000/1000/1000)*10000) / 10000
-					nodeResMem[nodeName] = math.Ceil((float64(memoryUseInt)/1000/1000)*10000) / 10000
+					//2351339414
+					//2.4
+					nodeResCPU[nodeName] = math.Ceil((float64(cpuUseInt))*10000) / 10000
+					nodeResMem[nodeName] = math.Ceil((float64(memoryUseInt))*10000) / 10000
 
 					nodeResCPUSum += nodeResCPU[nodeName]
 					nodeResMemSum += nodeResMem[nodeName]
@@ -649,6 +655,7 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 		nodeMemRank := reverseRank(nodeResMem, 5)
 
 		// nodeResCPUSumStr := fmt.Sprintf("%.1f", nodeResCPUSum/1000/1000/1000)
+		//2.4
 		nodeResCPUSumStr := nodeResCPUSum / 1000 / 1000 / 1000
 		// nodeResMemSumStr := fmt.Sprintf("%.1f", nodeResMemSum/1000)
 		nodeResMemSumStr := nodeResMemSum / 1000 / 1000 //Gi
