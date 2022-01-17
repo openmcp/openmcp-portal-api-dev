@@ -431,10 +431,10 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	var allUrls []string
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
-	go CallAPI(token, clusterurl, ch)
+	go CallGetAPI(token, clusterurl, ch)
 	clusters := <-ch
-	clusterData := clusters.data
 
+	clusterData := clusters.data
 	resCluster := DashboardRes{}
 
 	var clusternames []string
@@ -446,7 +446,7 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
 			url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
-			go CallAPI(token, url, ch)
+			go CallGetAPI(token, url, ch)
 			clusters := <-ch
 			clusterData := clusters.data
 
@@ -467,7 +467,6 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 				clusternames = append(clusternames, clustername)
 			}
 		}
-
 	}
 
 	for _, cluster := range clusternames {
@@ -480,7 +479,7 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, arg := range allUrls[0:] {
-		go CallAPI(token, arg, ch)
+		go CallGetAPI(token, arg, ch)
 	}
 
 	var results = make(map[string]interface{})
@@ -490,7 +489,9 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 
 	for range allUrls[0:] {
 		result := <-ch
-		results[result.url] = result.data
+		if result.data != nil {
+			results[result.url] = result.data
+		}
 	}
 
 	ruuningPodCnt := 0
@@ -530,7 +531,6 @@ func DbStatus(w http.ResponseWriter, r *http.Request) {
 					unknownPodCnt++
 				}
 			}
-
 		} else if kind == "NodeList" {
 			nodeCnt = nodeCnt + len(result.(map[string]interface{})["items"].([]interface{}))
 			for _, element := range result.(map[string]interface{})["items"].([]interface{}) {
@@ -687,7 +687,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
-	go CallAPI(token, clusterurl, ch)
+	go CallGetAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
@@ -701,12 +701,14 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		clusterInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			clusterInfoList[comm.name] = comm.result
+		}
 	}
 
 	podsInfoList := make(map[string]map[string]interface{})
@@ -714,12 +716,14 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		podsInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			podsInfoList[comm.name] = comm.result
+		}
 	}
 
 	for _, element := range clusterData["items"].([]interface{}) {
@@ -765,38 +769,40 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 				// podData := podResult.data
 				// podItems := podData["items"].([]interface{})
 				podData := podsInfoList[clustername]
-				podItems := podData["items"].([]interface{})
+				if podData != nil {
+					podItems := podData["items"].([]interface{})
 
-				// get podUsage counts by nodename groups
-				for _, element := range podItems {
-					pod := Pods{}
-					podName := GetStringElement(element, []string{"metadata", "name"})
-					createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-					status := GetStringElement(element, []string{"status", "phase"})
-					namespace := GetStringElement(element, []string{"metadata", "namespace"})
+					// get podUsage counts by nodename groups
+					for _, element := range podItems {
+						pod := Pods{}
+						podName := GetStringElement(element, []string{"metadata", "name"})
+						createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+						status := GetStringElement(element, []string{"status", "phase"})
+						namespace := GetStringElement(element, []string{"metadata", "namespace"})
 
-					if !IsContains(GetSystemNamespace(), namespace) {
-						// podIP := "-"
-						// node := "-"
-						// nodeIP := "-"
-						// if status == "Running" {
-						// 	podIP = GetStringElement(element, []string{"status", "podIP"})
-						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-						// 	node = GetStringElement(element, []string{"spec", "nodeName"})
-						// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-						// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
-						// }
+						if !IsContains(GetSystemNamespace(), namespace) {
+							// podIP := "-"
+							// node := "-"
+							// nodeIP := "-"
+							// if status == "Running" {
+							// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+							// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+							// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+							// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+							// }
 
-						pod.Id = region + "-" + clustername + "-" + podName
-						pod.Name = podName
-						pod.Value = "5"
-						pod.Path = pathPod
-						pod.Status = status
-						pod.CreatedTime = createdTime
-						podData := PodSubInfo{clustername, namespace}
-						pod.Data = podData
-						cluster.Pods = append(cluster.Pods, pod)
+							pod.Id = region + "-" + clustername + "-" + podName
+							pod.Name = podName
+							pod.Value = "5"
+							pod.Path = pathPod
+							pod.Status = status
+							pod.CreatedTime = createdTime
+							podData := PodSubInfo{clustername, namespace}
+							pod.Data = podData
+							cluster.Pods = append(cluster.Pods, pod)
+						}
 					}
 				}
 
@@ -881,7 +887,7 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
-	go CallAPI(token, clusterurl, ch)
+	go CallGetAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
@@ -895,25 +901,32 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
+
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		clusterInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			clusterInfoList[comm.name] = comm.result
+		}
 	}
 
 	podsInfoList := make(map[string]map[string]interface{})
+
 	for _, element := range clusterData["items"].([]interface{}) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
+
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		podsInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			podsInfoList[comm.name] = comm.result
+		}
 	}
 
 	clusterHealthyCnt := 0
@@ -959,49 +972,51 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 				// podData := podResult.data
 				// podItems := podData["items"].([]interface{})
 				podData := podsInfoList[clustername]
-				podItems := podData["items"].([]interface{})
+				if podData != nil {
+					podItems := podData["items"].([]interface{})
 
-				// get podUsage counts by nodename groups
-				for _, element := range podItems {
-					pod := Pods{}
-					app := GetStringElement(element, []string{"metadata", "labels", "app"})
-					namespace := GetStringElement(element, []string{"metadata", "namespace"})
-					if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
-						podName := GetStringElement(element, []string{"metadata", "name"})
-						status := GetStringElement(element, []string{"status", "phase"})
-						createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
-						// project := GetStringElement(element, []string{"metadata", "namespace"})
-						// podIP := "-"
-						// node := "-"
-						// nodeIP := "-"
-						// if status == "Running" {
-						// 	podIP = GetStringElement(element, []string{"status", "podIP"})
-						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
-						// 	node = GetStringElement(element, []string{"spec", "nodeName"})
-						// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
-						// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
-						// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
-						// }
+					// get podUsage counts by nodename groups
+					for _, element := range podItems {
+						pod := Pods{}
+						app := GetStringElement(element, []string{"metadata", "labels", "app"})
+						namespace := GetStringElement(element, []string{"metadata", "namespace"})
+						if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+							podName := GetStringElement(element, []string{"metadata", "name"})
+							status := GetStringElement(element, []string{"status", "phase"})
+							createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+							// project := GetStringElement(element, []string{"metadata", "namespace"})
+							// podIP := "-"
+							// node := "-"
+							// nodeIP := "-"
+							// if status == "Running" {
+							// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+							// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+							// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+							// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+							// }
 
-						pod.Id = app + "-" + clustername + "-" + podName
-						pod.Name = podName
-						pod.Value = "5"
-						pod.Path = pathPod
-						pod.Status = status
-						pod.CreatedTime = createdTime
-						podData := PodSubInfo{clustername, namespace}
-						pod.Data = podData
+							pod.Id = app + "-" + clustername + "-" + podName
+							pod.Name = podName
+							pod.Value = "5"
+							pod.Path = pathPod
+							pod.Status = status
+							pod.CreatedTime = createdTime
+							podData := PodSubInfo{clustername, namespace}
+							pod.Data = podData
 
-						serviceClusterlist[app] =
-							Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
+							serviceClusterlist[app] =
+								Clusters{app + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[app].Pods, pod), app}
 
+						}
 					}
-				}
 
-				for _, outp := range serviceClusterlist {
-					serviceTopologylist[outp.App] =
-						ServiceTopology{outp.App, pathService, "50", "", append(serviceTopologylist[outp.App].Clusters, outp)}
-					// resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
+					for _, outp := range serviceClusterlist {
+						serviceTopologylist[outp.App] =
+							ServiceTopology{outp.App, pathService, "50", "", append(serviceTopologylist[outp.App].Clusters, outp)}
+						// resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
+					}
 				}
 
 				// type ClusterTopology struct {
@@ -1073,7 +1088,7 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
-	go CallAPI(token, clusterurl, ch)
+	go CallGetAPI(token, clusterurl, ch)
 	clusters := <-ch
 	clusterData := clusters.data
 
@@ -1088,12 +1103,14 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		clusterInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			clusterInfoList[comm.name] = comm.result
+		}
 	}
 
 	podsInfoList := make(map[string]map[string]interface{})
@@ -1101,12 +1118,14 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
 		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
 		go func(cName string) {
-			CallAPIGO(ciChan, url, cName, token)
+			CallGetAPIGO(ciChan, url, cName, token)
 		}(cName)
 	}
 	for range clusterData["items"].([]interface{}) {
 		comm := <-ciChan
-		podsInfoList[comm.name] = comm.result
+		if comm.result != nil {
+			podsInfoList[comm.name] = comm.result
+		}
 	}
 
 	for _, element := range clusterData["items"].([]interface{}) {
@@ -1153,34 +1172,36 @@ func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 				// podItems := podData["items"].([]interface{})
 
 				podData := podsInfoList[clustername]
-				podItems := podData["items"].([]interface{})
+				if podData != nil {
+					podItems := podData["items"].([]interface{})
 
-				// get podUsage counts by nodename groups
-				for _, element := range podItems {
-					service := Services{}
+					// get podUsage counts by nodename groups
+					for _, element := range podItems {
+						service := Services{}
 
-					app := GetStringElement(element, []string{"metadata", "labels", "app"})
-					namespace := GetStringElement(element, []string{"metadata", "namespace"})
+						app := GetStringElement(element, []string{"metadata", "labels", "app"})
+						namespace := GetStringElement(element, []string{"metadata", "namespace"})
 
-					//
-					if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
-						if !IsContains(appNames, app) {
-							appNames = append(appNames, app)
+						//
+						if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+							if !IsContains(appNames, app) {
+								appNames = append(appNames, app)
 
-							service.Id = app
-							service.Name = app
-							service.Value = "5"
-							service.Path = pathService
-							service.Data = ""
+								service.Id = app
+								service.Name = app
+								service.Value = "5"
+								service.Path = pathService
+								service.Data = ""
 
-							cluster.Services = append(cluster.Services, service)
-						} else {
-							if !IsContains(cluster.Link, app) {
-								cluster.Link = append(cluster.Link, app)
+								cluster.Services = append(cluster.Services, service)
+							} else {
+								if !IsContains(cluster.Link, app) {
+									cluster.Link = append(cluster.Link, app)
+								}
 							}
 						}
-					}
 
+					}
 				}
 
 				regionTopologylist[region] =

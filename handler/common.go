@@ -81,6 +81,43 @@ func GetOpenMCPToken() string {
 	return token
 }
 
+func CallGetAPI(token string, url string, ch chan<- Resultmap) {
+	start := time.Now()
+	secs := time.Since(start).Seconds()
+
+	var bearer = "Bearer " + token
+	req, err := http.NewRequest("GET", url, nil)
+
+	req.Header.Add("Authorization", bearer)
+	// Send req using http Client
+	// var client http.Client
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+			DisableKeepAlives: true,
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Do(req)
+	var data map[string]interface{}
+	if err != nil {
+		fmt.Println("=====================CallGetAPI ERROR========================")
+		fmt.Println(err)
+		ch <- Resultmap{secs, url, data}
+	} else {
+		resp.Close = true
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		defer resp.Body.Close() // 리소스 누출 방지
+		if err != nil {
+			fmt.Println(err)
+		}
+		json.Unmarshal([]byte(bodyBytes), &data)
+
+		ch <- Resultmap{secs, url, data}
+	}
+}
+
 func CallAPI(token string, url string, ch chan<- Resultmap) {
 	start := time.Now()
 	var bearer = "Bearer " + token
@@ -1038,6 +1075,14 @@ func GetSystemNamespace() []string {
 func CallAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
 	ch := make(chan Resultmap)
 	go CallAPI(token, url, ch)
+	result := <-ch
+	data := result.data
+	ciChan <- ChanRes{resourceName, data}
+}
+
+func CallGetAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
+	ch := make(chan Resultmap)
+	go CallGetAPI(token, url, ch)
 	result := <-ch
 	data := result.data
 	ciChan <- ChanRes{resourceName, data}
