@@ -102,7 +102,6 @@ func CallGetAPI(token string, url string, ch chan<- Resultmap) {
 	resp, err := client.Do(req)
 	var data map[string]interface{}
 	if err != nil {
-		fmt.Println("=====================CallGetAPI ERROR========================")
 		fmt.Println(err)
 		ch <- Resultmap{secs, url, data}
 	} else {
