@@ -279,8 +279,8 @@ func CallPatchAPI(url string, headtype string, body []interface{}, bodyIsArray b
 	if err != nil {
 		return nil, err
 	}
-	str := string(respBody)
-	fmt.Println(str)
+	// str := string(respBody)
+	// fmt.Println(str)
 	return respBody, nil
 }
 

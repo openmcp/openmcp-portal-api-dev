@@ -317,6 +317,20 @@ var routes = Routes{
 	},
 
 	Route{
+		"node-taint-add",
+		"PATCH",
+		"/apis/nodes/taint/add",
+		handler.UpdateNodeTaint,
+	},
+
+	Route{
+		"node-taint-delete",
+		"PATCH",
+		"/apis/nodes/taint/delete",
+		handler.DeleteNodeTaint,
+	},
+
+	Route{
 		"projects",
 		"POST",
 		"/apis/projects",

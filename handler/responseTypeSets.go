@@ -94,18 +94,18 @@ type NodeOverView struct {
 }
 
 type NodeBasicInfo struct {
-	Name            string `json:"name"`
-	Status          string `json:"status"`
-	Role            string `json:"role"`
-	Kubernetes      string `json:"kubernetes"`
-	KubernetesProxy string `json:"kubernetes_proxy"`
-	IP              string `json:"ip"`
-	OS              string `json:"os"`
-	Docker          string `json:"docker"`
-	CreatedTime     string `json:"created_time"`
-	Taint           Taint  `json:"taint"`
-	Provider        string `json:"provider"`
-	Cluster         string `json:"cluster"`
+	Name            string  `json:"name"`
+	Status          string  `json:"status"`
+	Role            string  `json:"role"`
+	Kubernetes      string  `json:"kubernetes"`
+	KubernetesProxy string  `json:"kubernetes_proxy"`
+	IP              string  `json:"ip"`
+	OS              string  `json:"os"`
+	Docker          string  `json:"docker"`
+	CreatedTime     string  `json:"created_time"`
+	Taint           []Taint `json:"taint"`
+	Provider        string  `json:"provider"`
+	Cluster         string  `json:"cluster"`
 }
 
 type NodeResourceUsage2 struct {
@@ -124,9 +124,9 @@ type NodeResourceUsage struct {
 }
 
 type Taint struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Taint string `json:"taint"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	Effect string `json:"effect"`
 }
 
 type ProjectRes struct {

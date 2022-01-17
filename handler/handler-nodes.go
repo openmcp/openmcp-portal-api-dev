@@ -109,10 +109,10 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		nURL := "https://" + openmcpURL + "/api/v1/nodes?clustername=" + cName
 		pURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
 		go func(cName string) {
-			CallAPIGO(ciChan, nURL, cName, token)
+			CallGetAPIGO(ciChan, nURL, cName, token)
 		}(cName)
 		go func(cName string) {
-			CallAPIGO(ciChan2, pURL, cName, token)
+			CallGetAPIGO(ciChan2, pURL, cName, token)
 		}(cName)
 	}
 	// elapsedTime = time.Since(startTime)
@@ -122,8 +122,13 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		comm := <-ciChan
 		comm2 := <-ciChan2
 		// fmt.Println("1111", comm.name)
-		nodesInfoList[comm.name] = comm.result
-		podsInfoList[comm2.name] = comm2.result
+		if comm.result != nil {
+			nodesInfoList[comm.name] = comm.result
+		}
+
+		if comm2.result != nil {
+			podsInfoList[comm2.name] = comm2.result
+		}
 	}
 	// elapsedTime = time.Since(startTime)
 	// fmt.Printf("nodesInfo concurrent2: %s\n", elapsedTime)
@@ -140,7 +145,7 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		// nodeData := nodeResult.data
 		nodeData := nodesInfoList[nodeCluster.Name]
 
-		if nodeData["kind"].(string) != "NodeList" {
+		if nodeData == nil || nodeData["kind"].(string) != "NodeList" {
 			continue
 		}
 		nodeItems := nodeData["items"].([]interface{})
@@ -295,22 +300,24 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 
 		// podItems := podsInfoList[nodeCluster.Name]
 		podData := podsInfoList[nodeCluster.Name]
-		podItems := podData["items"].([]interface{})
-
-		// fmt.Println("podItmes len:", len(podItems))
-
-		// get podUsage counts by nodename groups
-		for _, element := range podItems {
-			nodeCheck := GetInterfaceElement(element, []string{"spec", "nodeName"})
-			//  element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"]
-			nodeName := "-"
-			if nodeCheck == nil {
-				nodeName = "-"
-				// fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
-			} else {
-				nodeName = nodeCheck.(string)
+		if podData != nil {
+			podItems := podData["items"].([]interface{})
+	
+			// fmt.Println("podItmes len:", len(podItems))
+	
+			// get podUsage counts by nodename groups
+			for _, element := range podItems {
+				nodeCheck := GetInterfaceElement(element, []string{"spec", "nodeName"})
+				//  element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"]
+				nodeName := "-"
+				if nodeCheck == nil {
+					nodeName = "-"
+					// fmt.Println(element.(map[string]interface{})["metadata"].(map[string]interface{})["name"])
+				} else {
+					nodeName = nodeCheck.(string)
+				}
+				podsCount[nodeName]++
 			}
-			podsCount[nodeName]++
 		}
 	}
 
@@ -588,7 +595,22 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 				status = "Unhealthy"
 			}
 		}
-		taint := Taint{"", "", ""}
+
+		GetArrayElement(nodeData, []string{"status", "addresses"})
+		taints := GetArrayElement(nodeData, []string{"spec", "taints"})
+		taint := []Taint{}
+		if len(taints) > 0 {
+			for _, taintElem := range taints {
+				key := GetStringElement(taintElem, []string{"key"})
+				effect := GetStringElement(taintElem, []string{"effect"})
+				value := GetStringElement(taintElem, []string{"value"})
+				if value == "-" {
+					value = ""
+				}
+				taint = append(taint, Taint{key, value, effect})
+			}
+		}
+
 		provider := r.URL.Query().Get("provider")
 		basicInfo := NodeBasicInfo{nodeName, status, role, kebernetes, kubernetesProxy, ip, os, docker, createdTime, taint, provider, clusterName}
 
@@ -705,7 +727,6 @@ func NodeOverview(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(responseJSON)
 
 	}
-
 }
 
 func NodesMetric(w http.ResponseWriter, r *http.Request) {
@@ -830,5 +851,117 @@ func NodesMetric(w http.ResponseWriter, r *http.Request) {
 
 	responseJSON := nodeResUsage
 	json.NewEncoder(w).Encode(responseJSON)
+}
 
+func UpdateNodeTaint(w http.ResponseWriter, r *http.Request) {
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusterName := data["clusterName"].(string)
+	nodeName := data["nodeName"].(string)
+	effect := data["effect"].(string)
+	key := data["key"].(string)
+	value := data["value"].(string)
+
+	type Taint struct {
+		Effect string `json:"effect"`
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+	}
+
+	type Taints struct {
+		Taints []Taint `json:"taints"`
+	}
+
+	type Spec struct {
+		Spec Taints `json:"spec"`
+	}
+
+	taint := Taint{effect, key, value}
+	taints := Taints{}
+	taints.Taints = append(taints.Taints, taint)
+	spec := Spec{}
+	spec.Spec = taints
+
+	// 	{
+	//     "spec":{
+	//         "taints":[{
+	//             "effect":"NoSchedule",
+	//             "key":"node-role.kubernetes.io/master"
+	//         }]
+	//     }
+	// }
+
+	var body []interface{}
+	body = append(body, spec)
+
+	var jsonErrs []jsonErr
+
+	// https://115.94.141.62:8080/api/v1/nodes/cluster2-worker2.dev.gmd.life?clustername=cluster2
+	taintUrl := "https://" + openmcpURL + "/api/v1/nodes/" + nodeName + "?clustername=" + clusterName
+
+	resp, err := CallPatchAPI(taintUrl, "application/strategic-merge-patch+json", body, false)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "Node Taint Add Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+
+	json.NewEncoder(w).Encode(jsonErrs)
+}
+
+func DeleteNodeTaint(w http.ResponseWriter, r *http.Request) {
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	clusterName := data["clusterName"].(string)
+	nodeName := data["nodeName"].(string)
+	index := data["index"].(string)
+
+	type TaintDelete struct {
+		Op   string `json:"op"`
+		Path string `json:"path"`
+	}
+
+	taintDelete := TaintDelete{"remove", `/spec/taints/` + index}
+
+	var body []interface{}
+	body = append(body, taintDelete)
+
+	var jsonErrs []jsonErr
+
+	// https://115.94.141.62:8080/api/v1/nodes/cluster2-worker2.dev.gmd.life?clustername=cluster2
+	taintUrl := "https://" + openmcpURL + "/api/v1/nodes/" + nodeName + "?clustername=" + clusterName
+	resp, err := CallPatchAPI(taintUrl, "application/json-patch+json", body, true)
+	var msg jsonErr
+
+	if err != nil {
+		msg = jsonErr{503, "failed", "request fail"}
+	}
+
+	var dataRes map[string]interface{}
+	json.Unmarshal([]byte(resp), &dataRes)
+	if dataRes != nil {
+		if dataRes["kind"].(string) == "Status" {
+			msg = jsonErr{501, "failed", dataRes["message"].(string)}
+		} else {
+			msg = jsonErr{200, "success", "Node Taint Delete Completed"}
+		}
+	}
+
+	jsonErrs = append(jsonErrs, msg)
+
+	json.NewEncoder(w).Encode(jsonErrs)
 }
