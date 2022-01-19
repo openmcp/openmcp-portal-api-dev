@@ -150,8 +150,8 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
 			if isMaster != "-" && isMaster == "" {
-				zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-				region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+				region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+				zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
 				resCluster.Clusters[i].Zones = zone
 				resCluster.Clusters[i].Region = region
 			}
@@ -408,8 +408,8 @@ func GetJoinableClusters(w http.ResponseWriter, r *http.Request) {
 					// 	isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
 					// 	if isMaster != "-" && isMaster == "" {
-					// 		zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-					// 		region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+					// 		region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+					// 		zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
 					// 	}
 					// }
 
@@ -533,8 +533,8 @@ func ClusterOverview(w http.ResponseWriter, r *http.Request) {
 			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
 			if isMaster != "-" && isMaster == "" {
-				zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-				region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+				region = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+				zone = GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
 			}
 
 			nodeName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
@@ -961,8 +961,8 @@ func GetPublicCloudClusters(w http.ResponseWriter, r *http.Request) {
 			// isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
 			// if isMaster != "-" && isMaster == "" {
-			// 	zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-			// 	region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+			// 	region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+			// 	zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
 			// 	resCluster.Clusters[i].Zones = zone
 			// 	resCluster.Clusters[i].Region = region
 			// }
