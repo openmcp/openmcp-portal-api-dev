@@ -62,26 +62,28 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 				// clusters := <-ch
 				// clusterData := clusters.data
 				clusterData := clusterInfoList[clusterName]
+				if clusterData != nil {
+					cluster := ClusterInfo{}
+					clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+					if clusterType == "Ready" {
+						// clusterNames = append(clusterNames, clusterName)
+						cluster.Name = clusterName
+						cluster.Provider = provider
 
-				cluster := ClusterInfo{}
-				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
-				if clusterType == "Ready" {
-					// clusterNames = append(clusterNames, clusterName)
-					cluster.Name = clusterName
-					cluster.Provider = provider
-
-					// // if 조건으로 테스트용 Provider 입력해보자
-					// if clusterName == "cluster1" {
-					// 	provider = "On-Premis" //>>> KVM이라고할꺼임
-					// } else if clusterName == "cluster2" {
-					// 	provider = "GKE"
-					// } else if clusterName == "openmcp" {
-					// 	provider = "AKS"
-					// } else {
-					// 	provider = "EKS"
-					// }
-					resCluster.Clusters = append(resCluster.Clusters, cluster)
+						// // if 조건으로 테스트용 Provider 입력해보자
+						// if clusterName == "cluster1" {
+						// 	provider = "On-Premis" //>>> KVM이라고할꺼임
+						// } else if clusterName == "cluster2" {
+						// 	provider = "GKE"
+						// } else if clusterName == "openmcp" {
+						// 	provider = "AKS"
+						// } else {
+						// 	provider = "EKS"
+						// }
+						resCluster.Clusters = append(resCluster.Clusters, cluster)
+					}
 				}
+
 			}
 
 		}

@@ -84,16 +84,17 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 				// clusterData := clusters.data
 
 				clusterData := clusterInfoList[clusterName]
+				if clusterData != nil {
+					clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
 
-				clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+					if clusterType == "Ready" {
+						nodeCluster.Name = clusterName
+						nodeCluster.Provider = provider
+						nodeCluster.JoinStatus = joinStatus
 
-				if clusterType == "Ready" {
-					nodeCluster.Name = clusterName
-					nodeCluster.Provider = provider
-					nodeCluster.JoinStatus = joinStatus
-
-					nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
-					clusterNames = append(clusterNames, clusterName)
+						nodeClusters.Clusters = append(nodeClusters.Clusters, nodeCluster)
+						clusterNames = append(clusterNames, clusterName)
+					}
 				}
 			}
 		}
@@ -302,9 +303,9 @@ func Nodes(w http.ResponseWriter, r *http.Request) {
 		podData := podsInfoList[nodeCluster.Name]
 		if podData != nil {
 			podItems := podData["items"].([]interface{})
-	
+
 			// fmt.Println("podItmes len:", len(podItems))
-	
+
 			// get podUsage counts by nodename groups
 			for _, element := range podItems {
 				nodeCheck := GetInterfaceElement(element, []string{"spec", "nodeName"})
