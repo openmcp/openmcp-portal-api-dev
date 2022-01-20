@@ -832,6 +832,7 @@ func DbClusterTopology(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resTopology)
 }
 
+
 func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -979,8 +980,10 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 					for _, element := range podItems {
 						pod := Pods{}
 						app := GetStringElement(element, []string{"metadata", "labels", "app"})
+
 						namespace := GetStringElement(element, []string{"metadata", "namespace"})
 						if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+							app = namespace + "/" + app
 							podName := GetStringElement(element, []string{"metadata", "name"})
 							status := GetStringElement(element, []string{"status", "phase"})
 							createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
@@ -1041,6 +1044,232 @@ func DbServiceTopology(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(resTopology)
 }
+
+// func DbServiceTopology2(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+// 	w.WriteHeader(http.StatusOK)
+
+// 	data := GetJsonBody(r.Body)
+// 	defer r.Body.Close() // 리소스 누출 방지
+
+// 	pathService := data["pathService"].(string)
+// 	pathCluster := data["pathCluster"].(string)
+// 	pathNamespace := data["pathNamespace"].(string)
+// 	pathPod := data["pathPod"].(string)
+
+// 	gCluster := data["g_clusters"].([]interface{})
+
+// 	ch := make(chan Resultmap)
+// 	token := GetOpenMCPToken()
+
+// 	type PodSubInfo struct {
+// 		Cluster   string `json:"cluster"`
+// 		Namespace string `json:"namespace"`
+// 	}
+
+// 	type Pods struct {
+// 		Id          string     `json:"id"`
+// 		Name        string     `json:"name"`
+// 		Path        string     `json:"path"`
+// 		Value       string     `json:"value"`
+// 		Status      string     `json:"status"`
+// 		CreatedTime string     `json:"created_time"`
+// 		Data        PodSubInfo `json:"data"`
+// 	}
+
+// 	type Namespaces struct {
+// 		Id    string `json:"id"`
+// 		Name  string `json:"name"`
+// 		Path  string `json:"path"`
+// 		Value string `json:"value"`
+// 		Pods  []Pods `json:"children"`
+// 		App   string `json:"app"`
+// 	}
+
+// 	type Clusters struct {
+// 		Id         string       `json:"id"`
+// 		Name       string       `json:"name"`
+// 		Path       string       `json:"path"`
+// 		Value      string       `json:"value"`
+// 		Status     string       `json:"status"`
+// 		Data       string       `json:"data"`
+// 		Namespaces []Namespaces `json:"children"`
+// 		App        string       `json:"app"`
+// 	}
+
+// 	type ServiceTopology struct {
+// 		Name     string     `json:"name"`
+// 		Path     string     `json:"path"`
+// 		Value    string     `json:"value"`
+// 		Data     string     `json:"data"`
+// 		Clusters []Clusters `json:"children"`
+// 	}
+
+// 	type ResServiceTopology struct {
+// 		ServiceTopology []ServiceTopology `json:"topology"`
+// 	}
+
+// 	clusterurl := "https://" + openmcpURL + "/apis/core.kubefed.io/v1beta1/kubefedclusters?clustername=openmcp" //기존정보
+// 	go CallGetAPI(token, clusterurl, ch)
+// 	clusters := <-ch
+// 	clusterData := clusters.data
+
+// 	var serviceTopologylist = make(map[string]ServiceTopology)
+
+// 	ciChan := make(chan ChanRes, len(clusterData["items"].([]interface{})))
+// 	defer close(ciChan)
+
+// 	clusterInfoList := make(map[string]map[string]interface{})
+// 	for _, element := range clusterData["items"].([]interface{}) {
+// 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+// 		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + cName + "?clustername=openmcp"
+// 		go func(cName string) {
+// 			CallGetAPIGO(ciChan, url, cName, token)
+// 		}(cName)
+// 	}
+
+// 	for range clusterData["items"].([]interface{}) {
+// 		comm := <-ciChan
+// 		if comm.result != nil {
+// 			clusterInfoList[comm.name] = comm.result
+// 		}
+// 	}
+
+// 	podsInfoList := make(map[string]map[string]interface{})
+
+// 	for _, element := range clusterData["items"].([]interface{}) {
+// 		cName := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+// 		url := "https://" + openmcpURL + "/api/v1/pods?clustername=" + cName
+// 		go func(cName string) {
+// 			CallGetAPIGO(ciChan, url, cName, token)
+// 		}(cName)
+// 	}
+
+// 	for range clusterData["items"].([]interface{}) {
+// 		comm := <-ciChan
+// 		if comm.result != nil {
+// 			podsInfoList[comm.name] = comm.result
+// 		}
+// 	}
+
+// 	clusterHealthyCnt := 0
+// 	clusterUnHealthyCnt := 0
+// 	clusterUnknownCnt := 0
+
+// 	for _, element := range clusterData["items"].([]interface{}) {
+// 		var serviceClusterlist = make(map[string]Clusters)
+// 		var serviceNamespacelist = make(map[string]Namespaces)
+
+// 		clustername := element.(map[string]interface{})["metadata"].(map[string]interface{})["name"].(string)
+
+// 		if FindInInterfaceArr(gCluster, clustername) || gCluster[0] == "allClusters" {
+
+// 			// url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters/" + clustername + "?clustername=openmcp"
+// 			// go CallAPI(token, url, ch)
+// 			// clusters := <-ch
+// 			// clusterData := clusters.data
+// 			clusterData := clusterInfoList[clustername]
+
+// 			joinStatus := GetStringElement(clusterData["spec"], []string{"joinStatus"})
+// 			if joinStatus == "JOIN" || joinStatus == "JOINING" {
+// 				// statusReason := element.(map[string]interface{})["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["reason"].(string)
+// 				statusReason := GetStringElement(element, []string{"status", "conditions", "reason"})
+// 				statusType := GetStringElement(element, []string{"status", "conditions", "type"})
+// 				statusTF := GetStringElement(element, []string{"status", "conditions", "status"})
+// 				clusterStatus := "Healthy"
+
+// 				if statusReason == "ClusterNotReachable" && statusType == "Offline" && statusTF == "True" {
+// 					clusterStatus = "Unhealthy"
+// 					clusterUnHealthyCnt++
+// 				} else if statusReason == "ClusterReady" && statusType == "Ready" && statusTF == "True" {
+// 					clusterStatus = "Healthy"
+// 					clusterHealthyCnt++
+// 				} else {
+// 					clusterStatus = "Unknown"
+// 					clusterUnknownCnt++
+// 				}
+
+// 				// GET PODS
+// 				// podURL := "https://" + openmcpURL + "/api/v1/pods?clustername=" + clustername
+// 				// go CallAPI(token, podURL, ch)
+// 				// podResult := <-ch
+// 				// podData := podResult.data
+// 				// podItems := podData["items"].([]interface{})
+// 				podData := podsInfoList[clustername]
+// 				if podData != nil {
+// 					podItems := podData["items"].([]interface{})
+
+// 					// get podUsage counts by nodename groups
+// 					for _, element := range podItems {
+// 						pod := Pods{}
+// 						app := GetStringElement(element, []string{"metadata", "labels", "app"})
+// 						namespace := GetStringElement(element, []string{"metadata", "namespace"})
+// 						if app != "-" && app != "" && !IsContains(GetSystemNamespace(), namespace) {
+// 							podName := GetStringElement(element, []string{"metadata", "name"})
+// 							status := GetStringElement(element, []string{"status", "phase"})
+// 							createdTime := GetStringElement(element, []string{"metadata", "creationTimestamp"})
+// 							// project := GetStringElement(element, []string{"metadata", "namespace"})
+// 							// podIP := "-"
+// 							// node := "-"
+// 							// nodeIP := "-"
+// 							// if status == "Running" {
+// 							// 	podIP = GetStringElement(element, []string{"status", "podIP"})
+// 							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["podIP"].(string)
+// 							// 	node = GetStringElement(element, []string{"spec", "nodeName"})
+// 							// 	// element.(map[string]interface{})["spec"].(map[string]interface{})["nodeName"].(string)
+// 							// 	nodeIP = GetStringElement(element, []string{"status", "hostIP"})
+// 							// 	// element.(map[string]interface{})["status"].(map[string]interface{})["hostIP"].(string)
+// 							// }
+
+// 							pod.Id = app + "-" + clustername + "-" + podName
+// 							pod.Name = podName
+// 							pod.Value = "5"
+// 							pod.Path = pathPod
+// 							pod.Status = status
+// 							pod.CreatedTime = createdTime
+// 							podData := PodSubInfo{clustername, namespace}
+// 							pod.Data = podData
+
+// 							serviceNamespacelist[app] = Namespaces{app + "-" + clustername + "-" + namespace, namespace, pathNamespace, "30", append(serviceNamespacelist[app].Pods, pod), app}
+
+// 						}
+// 					}
+
+// 					for _, item := range serviceNamespacelist {
+// 						serviceClusterlist[item.Name] =
+// 							Clusters{item.App + "-" + clustername, clustername, pathCluster, "30", clusterStatus, "data", append(serviceClusterlist[item.Name].Namespaces, item), item.App}
+// 					}
+
+// 					for _, outp := range serviceClusterlist {
+// 						serviceTopologylist[outp.App] =
+// 							ServiceTopology{outp.App, pathService, "50", "", append(serviceTopologylist[outp.App].Clusters, outp)}
+// 						// resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
+// 					}
+// 				}
+
+// 				// type ClusterTopology struct {
+// 				// 	Name     string     `json:"name"`
+// 				// 	Path     string     `json:"path"`
+// 				// 	Value    string     `json:"value"`
+// 				// 	Clusters []Clusters `json:"children"`
+// 				// }
+// 			}
+// 		}
+// 	}
+
+// 	resTopology := ResServiceTopology{}
+
+// 	// for _, outp := range clusterlist {
+// 	// 	resCluster.Regions = append(resCluster.Regions, outp)
+// 	// }
+
+// 	for _, outp := range serviceTopologylist {
+// 		resTopology.ServiceTopology = append(resTopology.ServiceTopology, outp)
+// 	}
+
+// 	json.NewEncoder(w).Encode(resTopology)
+// }
+
 
 func DbServiceRegionTopology(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")

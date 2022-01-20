@@ -1079,6 +1079,14 @@ func CallAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
 	ciChan <- ChanRes{resourceName, data}
 }
 
+// func CallDeleteAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
+// 	ch := make(chan Resultmap)
+// 	go CallDeleteAPI(url)
+// 	result := <-ch
+// 	data := result.data
+// 	ciChan <- ChanRes{resourceName, data}
+// }
+
 func CallGetAPIGO(ciChan chan<- ChanRes, url, resourceName, token string) {
 	ch := make(chan Resultmap)
 	go CallGetAPI(token, url, ch)

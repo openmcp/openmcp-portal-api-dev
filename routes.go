@@ -468,6 +468,13 @@ var routes = Routes{
 	},
 
 	Route{
+		"deleteServices",
+		"POST",
+		"/apis/services/delete",
+		handler.DeleteServices,
+	},
+
+	Route{
 		"ingress",
 		"POST",
 		"/apis/ingress",

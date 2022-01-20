@@ -460,6 +460,47 @@ func GetServiceOverview(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resServiceOverview)
 }
 
+func DeleteServices(w http.ResponseWriter, r *http.Request) {
+	// token := GetOpenMCPToken()
+	data := GetJsonBody(r.Body)
+	defer r.Body.Close() // 리소스 누출 방지
+
+	serviceData := data["serviceData"].([]interface{})
+	var jsonResult []jsonErr
+
+	var msg jsonErr
+	for _, elem := range serviceData {
+		data := elem.(map[string]interface{})
+		clusterName := data["cluster"].(string)
+		namespace := data["project"].(string)
+		service := data["name"].(string)
+
+		// https://115.94.141.62:8080/api/v1/namespaces/testns/services/testsvc4?clustername=cluster19
+		url := "https://" + openmcpURL + "/api/v1/namespaces/" + namespace + "/services/" + service + "?clustername=" + clusterName
+
+		resp, err := CallDeleteAPI(url)
+
+		if err != nil {
+			msg = jsonErr{503, "failed", "delete service fail"}
+		}
+
+		var dataRes map[string]interface{}
+		json.Unmarshal([]byte(resp), &dataRes)
+
+		if dataRes != nil {
+			if dataRes["status"].(string) == "Success" {
+				msg = jsonErr{200, "success", "Service delete completed"}
+			} else {
+				msg = jsonErr{501, "failed", dataRes["message"].(string)}
+			}
+		}
+
+		jsonResult = append(jsonResult, msg)
+	}
+
+	json.NewEncoder(w).Encode(jsonResult)
+}
+
 func GetKialiURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
