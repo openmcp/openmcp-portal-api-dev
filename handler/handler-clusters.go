@@ -65,10 +65,15 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 				if clusterData != nil {
 					cluster := ClusterInfo{}
 					clusterType := GetStringElement(clusterData["status"], []string{"conditions", "type"})
+					region := GetStringElement(element, []string{"spec", "nodeInfo", "region"})
+					zone := GetStringElement(element, []string{"spec", "nodeInfo", "zone"})
 					if clusterType == "Ready" {
 						// clusterNames = append(clusterNames, clusterName)
 						cluster.Name = clusterName
 						cluster.Provider = provider
+						cluster.Region = region
+						cluster.Zones = zone
+
 
 						// // if 조건으로 테스트용 Provider 입력해보자
 						// if clusterName == "cluster1" {
@@ -147,14 +152,14 @@ func GetJoinedClusters(w http.ResponseWriter, r *http.Request) {
 
 		// get nodename, cpu capacity Information
 		for _, element := range nodeItems {
-			isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
+			// isMaster := GetStringElement(element, []string{"metadata", "labels", "node-role.kubernetes.io/master"})
 
-			if isMaster != "-" && isMaster == "" {
-				region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
-				zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
-				resCluster.Clusters[i].Zones = zone
-				resCluster.Clusters[i].Region = region
-			}
+			// if isMaster != "-" && isMaster == "" {
+			// 	region := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/region"})
+			// 	zone := GetStringElement(element, []string{"metadata", "labels", "topology.kubernetes.io/zone"})
+			// 	resCluster.Clusters[i].Zones = zone
+			// 	resCluster.Clusters[i].Region = region
+			// }
 
 			nodeName := GetStringElement(element, []string{"metadata", "name"})
 			// fmt.Println(nodeName)
