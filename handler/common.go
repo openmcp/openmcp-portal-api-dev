@@ -216,28 +216,21 @@ func CallPostAPI(url string, headtype string, body interface{}) ([]byte, error) 
 		},
 	}
 
-	fmt.Println(req)
-	fmt.Println("req =========== start")
-
 	resp, err := client.Do(req)
 
-	fmt.Println("req =========== end")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	fmt.Println("respBody =========== start")
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
-
-	fmt.Println("respBody =========== end")
 
 	if err != nil {
 		return nil, err
 	}
-	str := string(respBody)
-	fmt.Println(str)
+	// str := string(respBody)
+	// fmt.Println(str)
 	return respBody, nil
 }
 

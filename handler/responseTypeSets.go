@@ -605,6 +605,7 @@ type SnapshotSubInfo struct {
 	Cluster      string  `json:"cluster`
 	Deployment   string  `json:"deployment`
 	Increment    float64 `json:"increment"`
+	Namespace    string  `json:"namespace`
 }
 
 type SnapshotLogRes struct {

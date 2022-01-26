@@ -109,6 +109,7 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 			groupSnapshotkey := GetStringElement(element, []string{"spec", "groupSnapshotKey"})
 			spaceSnapshotSources := GetArrayElement(element, []string{"spec", "snapshotSources"})
 			deployment := ""
+			namespace := ""
 			cluster := ""
 
 			for _, item := range spaceSnapshotSources {
@@ -116,6 +117,7 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 				if resourceType == "Deployment" {
 					cluster = GetStringElement(item, []string{"resourceCluster"})
 					deployment = GetStringElement(item, []string{"resourceName"})
+					namespace = GetStringElement(item, []string{"resourceNamespace"})
 				}
 			}
 
@@ -144,11 +146,13 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 			snapSubInfo.Deployment = deployment
 			size, _ := strconv.ParseFloat(volumeSize, 64)
 			snapSubInfo.Increment = size
+			snapSubInfo.Namespace = namespace
 
 			snapSubs = append(snapSubs, snapSubInfo)
-			cluDep := cluster + deployment
+			cluNameDep := cluster + namespace + deployment
+			cluNameDep = strings.ToLower(cluNameDep)
 
-			subInfoMap[cluDep] = SnapTemp{cluDep, append(subInfoMap[cluDep].SnapshotSubInfos, snapSubInfo)}
+			subInfoMap[cluNameDep] = SnapTemp{cluNameDep, append(subInfoMap[cluNameDep].SnapshotSubInfos, snapSubInfo)}
 			// SnapshotSubInfo{snapshotName, status, creationTime, "5%"}
 		}
 	}
@@ -204,7 +208,8 @@ func SnapshotList(w http.ResponseWriter, r *http.Request) {
 		for _, element := range deploymentItems {
 			deployment := GetStringElement(element, []string{"metadata", "name"})
 			namespace := GetStringElement(element, []string{"metadata", "namespace"})
-			cldp := clusterName + deployment
+			cldp := clusterName + namespace + deployment
+			cldp = strings.ToLower(cldp)
 
 			snapshots := 0
 			if subInfoMap[cldp].SnapshotSubInfos != nil {
@@ -385,7 +390,8 @@ func SnapshotRestore(w http.ResponseWriter, r *http.Request) {
 
 	var jsonErrs []jsonErr
 
-	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/snapshots/" + snapshotName + "?clustername=" + clusterName
+	// URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/snapshots/" + snapshotName + "?clustername=" + clusterName
+	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/default/snapshots/" + snapshotName + "?clustername=" + clusterName
 	go CallAPI(token, URL, ch)
 	result := <-ch
 	snapData := result.data
