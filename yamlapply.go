@@ -58,12 +58,20 @@ func YamlApply(w http.ResponseWriter, r *http.Request) {
 
 		// fmt.Println(obj)
 		// fmt.Println(gvk.Kind, gvk.Version, gvk.Group, unstructuredObj.GetNamespace())
-		if gvk.Group == "" {
-			urlString = "https://" + openmcpURL + "/apis/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
+		kind := gvk.Kind
+		if gvk.Kind == "OpenMCPIngress" || gvk.Kind == "Ingress" {
+			kind = kind + "es"
 		} else {
-			urlString = "https://" + openmcpURL + "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/" + namespace + "/" + gvk.Kind + "s?clustername=openmcp"
+			kind = kind + "s"
+		}
+
+		if gvk.Group == "" {
+			urlString = "https://" + openmcpURL + "/apis/" + gvk.Version + "/namespaces/" + namespace + "/" + kind + "?clustername=openmcp"
+		} else {
+			urlString = "https://" + openmcpURL + "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/" + namespace + "/" + kind + "?clustername=openmcp"
 		}
 		urlString = strings.ToLower(urlString)
+		fmt.Println(urlString)
 		pBody := bytes.NewBuffer(rawObj.Raw)
 		// fmt.Println("urlString:    ", urlString)
 		// fmt.Println("pBody:     ", pBody)
