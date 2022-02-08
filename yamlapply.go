@@ -71,7 +71,6 @@ func YamlApply(w http.ResponseWriter, r *http.Request) {
 			urlString = "https://" + openmcpURL + "/apis/" + gvk.Group + "/" + gvk.Version + "/namespaces/" + namespace + "/" + kind + "?clustername=openmcp"
 		}
 		urlString = strings.ToLower(urlString)
-		fmt.Println(urlString)
 		pBody := bytes.NewBuffer(rawObj.Raw)
 		// fmt.Println("urlString:    ", urlString)
 		// fmt.Println("pBody:     ", pBody)
