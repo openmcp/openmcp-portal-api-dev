@@ -48,11 +48,12 @@ func Migration(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close() // 리소스 누출 방지
 
 	clusterName := data["cluster"].(string)
-	namespace := data["namespace"].(string)
+	// namespace := data["namespace"].(string)
 	value := data["value"].(map[string]interface{})
 
 	var jsonErrs []jsonErr
-	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/migrations?clustername=" + clusterName
+	URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/migrations?clustername=" + clusterName
+	// URL := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/" + namespace + "/migrations?clustername=" + clusterName
 
 	resp, err := CallPostAPI(URL, "application/json", value)
 	var msg jsonErr
