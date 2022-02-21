@@ -216,6 +216,8 @@ type DeploymentInfo struct {
 	Labels      map[string]interface{} `json:"labels"`
 	Resources   []interface{}          `json:"resources"`
 	Kind        string                 `json:"kind"`
+	Region      string                 `json:"region"`
+	Zone        string                 `json:"zone"`
 }
 
 type DeploymentOverview struct {

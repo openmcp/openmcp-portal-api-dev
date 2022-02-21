@@ -37,6 +37,7 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 
 	resDeployment := DeploymentRes{}
 	deploymentInfoList := make(map[string]map[string]interface{})
+	clusterAdditionalInfo := make(map[string]interface{})
 
 	if ynOmcpDp {
 		url := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/openmcpdeployments?clustername=openmcp"
@@ -105,6 +106,17 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 		clusters := <-ch
 		clusterData := clusters.data
 
+		//collect region, zone Info
+		clusterurl2 := "https://" + openmcpURL + "/apis/openmcp.k8s.io/v1alpha1/namespaces/openmcp/openmcpclusters?clustername=openmcp"
+		go CallAPI(token, clusterurl2, ch)
+		clusters2 := <-ch
+		clusterData2 := clusters2.data
+
+		for _, element := range clusterData2["items"].([]interface{}) {
+			cName := GetStringElement(element, []string{"metadata", "name"})
+			clusterAdditionalInfo[cName] = element
+		}
+
 		//get clusters Information
 		for _, element := range clusterData["items"].([]interface{}) {
 			clusterName := GetStringElement(element, []string{"metadata", "name"})
@@ -132,6 +144,7 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 			comm := <-ciChan
 			deploymentInfoList[comm.name] = comm.result
 		}
+
 		for _, clusterName := range clusterNames {
 			// // get node names, cpu(capacity)
 			// deploymentURL := "https://" + openmcpURL + "/apis/apps/v1/deployments?clustername=" + clusterName
@@ -142,6 +155,14 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 
 			deployment := DeploymentInfo{}
 			deploymentData := deploymentInfoList[clusterName]
+
+			clusterRegionZones := clusterAdditionalInfo[clusterName]
+			region := "-"
+			zone := "-"
+			if clusterRegionZones != nil {
+				region = GetStringElement(clusterRegionZones, []string{"spec", "nodeInfo", "region"})
+				zone = GetStringElement(clusterRegionZones, []string{"spec", "nodeInfo", "zone"})
+			}
 
 			if deploymentData["kind"].(string) == "DeploymentList" || deploymentData["kind"].(string) == "OpenMCPDeployment" {
 				deploymentItems := deploymentData["items"].([]interface{})
@@ -185,6 +206,8 @@ func GetDeployments(w http.ResponseWriter, r *http.Request) {
 					deployment.CreatedTime = created_time
 					deployment.Uid = ""
 					deployment.Labels = make(map[string]interface{})
+					deployment.Region = region
+					deployment.Zone = zone
 
 					resDeployment.Deployments = append(resDeployment.Deployments, deployment)
 				}
